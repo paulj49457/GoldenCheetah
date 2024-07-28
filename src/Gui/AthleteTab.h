@@ -115,6 +115,10 @@ class AthleteTab: public QWidget
                        *homeControls,
                        *intervalControls;
 
+        // There is only one shared equipment view
+        static EquipView* equipView;
+        static QStackedWidget *equipControls;
+
 };
 
 // 1px high progressline only visible when refreshing ..

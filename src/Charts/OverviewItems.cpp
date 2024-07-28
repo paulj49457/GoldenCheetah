@@ -67,6 +67,7 @@ OverviewItemConfig::registerItems()
     registry.addItem(OverviewItemType::PMC,        QObject::tr("PMC"),        QObject::tr("PMC Status Summary"),                 OverviewScope::ANALYSIS,                       PMCOverviewItem::create);
     registry.addItem(OverviewItemType::ROUTE,      QObject::tr("Route"),      QObject::tr("Route Summary"),                      OverviewScope::ANALYSIS,                       RouteOverviewItem::create);
     registry.addItem(OverviewItemType::DONUT,      QObject::tr("Donut"),      QObject::tr("Metric breakdown by category"),       OverviewScope::TRENDS,                         DonutOverviewItem::create);
+    registry.addItem(OverviewItemType::EQUIP,      QObject::tr("Equipment"),  QObject::tr("Equipment Item"),                     OverviewScope::EQUIPMENT,                      EquipOverviewItem::create);
 
     return true;
 }
@@ -927,6 +928,34 @@ MetaOverviewItem::configChanged(qint32)
 MetaOverviewItem::~MetaOverviewItem()
 {
     if (sparkline) delete sparkline;
+}
+
+EquipOverviewItem::EquipOverviewItem(ChartSpace* parent,
+                                    const QString& name, const double& nonGCDistance,
+                                    bool startSet, const QDateTime& startDate,
+                                    bool endSet, const QDateTime& endDate) : ChartSpaceItem(parent, name)
+{
+    // metric or meta or pmc
+    this->type = OverviewItemType::EQUIP;
+    this->nonGCDistance = nonGCDistance;
+    this->startSet = startSet;
+    this->startDate = startDate;
+    this->endSet = endSet;
+    this->endDate = endDate;
+
+    configwidget = new OverviewItemConfig(this);
+    configwidget->hide();
+
+    configChanged(0);
+}
+
+void
+EquipOverviewItem::configChanged(qint32)
+{
+}
+
+EquipOverviewItem::~EquipOverviewItem()
+{
 }
 
 IntervalOverviewItem::IntervalOverviewItem(ChartSpace *parent, QString name, QString xsymbol, QString ysymbol, QString zsymbol) : ChartSpaceItem(parent, name)
@@ -1822,6 +1851,11 @@ MetaOverviewItem::setData(RideItem *item)
 }
 
 void
+EquipOverviewItem::setData(RideItem*)
+{
+}
+
+void
 PMCOverviewItem::setData(RideItem *item)
 {
     if (item == NULL || item->ride() == NULL) return;
@@ -2598,6 +2632,10 @@ MetaOverviewItem::itemGeometryChanged() {
             sparkline->hide();
         }
     }
+}
+
+void
+EquipOverviewItem::itemGeometryChanged() {
 }
 
 void
@@ -3573,6 +3611,46 @@ MetaOverviewItem::itemPaint(QPainter *painter, const QStyleOptionGraphicsItem *,
 }
 
 void
+EquipOverviewItem::itemPaint(QPainter* painter, const QStyleOptionGraphicsItem*, QWidget*) {
+
+        // mid is slightly higher to account for space around title, move mid up
+        double mid = (ROWHEIGHT * 1.5f) + ((geometry().height() - (ROWHEIGHT * 2)) / 2.0f);
+
+        // we align centre and mid
+        QFontMetrics fm(parent->bigfont);
+     //   QRectF rect = QFontMetrics(parent->bigfont, parent->device()).boundingRect(value);
+
+        if (1) {
+            // long texts need to be formatted into a smaller font an word wrapped
+            painter->setPen(QColor(150, 150, 150));
+            painter->setFont(parent->smallfont);
+
+            static QString time_format = "HH:mm dd MMM yyyy";
+
+            // draw text and wrap / truncate to bounding rectangle
+            painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 2.5, geometry().width() - (ROWHEIGHT * 2),
+                geometry().height() - (ROWHEIGHT * 4)), QString::number(nonGCDistance, 'f', 2));
+
+            painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 3.5, geometry().width() - (ROWHEIGHT * 2),
+                geometry().height() - (ROWHEIGHT * 4)), startDate.toString(time_format));
+
+            painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 4.5, geometry().width() - (ROWHEIGHT * 2),
+                geometry().height() - (ROWHEIGHT * 4)), endDate.toString(time_format));
+
+
+        }
+        else {
+
+            // any other kind of metadata just paint it
+            painter->setPen(GColor(CPLOTMARKER));
+            painter->setFont(parent->bigfont);
+       //     painter->drawText(QPointF((geometry().width() - rect.width()) / 2.0f,
+       //         mid + (fm.ascent() / 3.0f)), nonGCDistance); // divided by 3 to account for "gap" at top of font
+        }
+
+}
+
+void
 PMCOverviewItem::itemPaint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
 
     // Lets use friendly names for TSB et al, as described on the TrainingPeaks website
@@ -3771,6 +3849,37 @@ OverviewItemConfig::OverviewItemConfig(ChartSpaceItem *item) : QWidget(NULL), it
         meta1 = new MetricSelect(this, item->parent->context, MetricSelect::Meta);
         connect(meta1, SIGNAL(textChanged(QString)), this, SLOT(dataChanged()));
         layout->addRow(tr("Field Name"), meta1);
+    }
+
+    if (item->type == OverviewItemType::EQUIP) {
+
+        // take from class and load the widget
+
+        nonGCDistance = new QLineEdit(this);
+        connect(nonGCDistance, SIGNAL(textChanged(QString)), this, SLOT(dataChanged()));
+        layout->addRow(tr("Non GC Distance"), nonGCDistance);
+
+        startSet = new QCheckBox(this);
+        connect(startSet, SIGNAL(stateChanged(int)), this, SLOT(dataChanged()));
+        layout->addRow(tr("Start Set"), startSet);
+
+        startDate = new QDateTimeEdit(this);
+        startDate->setCalendarPopup(true);
+        connect(startDate, SIGNAL(stateChanged(int)), this, SLOT(dataChanged()));
+        layout->addRow(tr("Start Set"), startDate);
+
+
+        endSet = new QCheckBox(this);
+        connect(endSet, SIGNAL(stateChanged(int)), this, SLOT(dataChanged()));
+        layout->addRow(tr("End Set"), endSet);
+
+        endDate = new QDateTimeEdit(this);
+        endDate->setCalendarPopup(true);
+        connect(endDate, SIGNAL(stateChanged(int)), this, SLOT(dataChanged()));
+        layout->addRow(tr("End Set"), endDate);
+
+        plainText = new QPlainTextEdit();
+        layout->addRow(tr("Notes"), plainText);
     }
 
     if (item->type == OverviewItemType::ZONE) {
@@ -4050,6 +4159,19 @@ OverviewItemConfig::setWidgets()
         }
         break;
 
+    case OverviewItemType::EQUIP:
+    {
+        // set the widget with the class data
+        EquipOverviewItem* mi = dynamic_cast<EquipOverviewItem*>(item);
+        name->setText(mi->name);
+        nonGCDistance->setText(QString::number(mi->nonGCDistance, 'f', 2));
+        startSet->setChecked(mi->startSet);
+        startDate->setDateTime(mi->startDate);
+        endSet->setChecked(mi->endSet);
+        endDate->setDateTime(mi->endDate);
+    }
+    break;
+
     case OverviewItemType::ZONE:
         {
             ZoneOverviewItem *mi = dynamic_cast<ZoneOverviewItem*>(item);
@@ -4172,6 +4294,20 @@ OverviewItemConfig::dataChanged()
             MetaOverviewItem *mi = dynamic_cast<MetaOverviewItem*>(item);
             mi->name = name->text();
             if (meta1->isValid()) mi->symbol = meta1->metaname();
+            mi->bgcolor = bgcolor->getColor().name();
+        }
+        break;
+
+    case OverviewItemType::EQUIP:
+        {
+            // take from widget and put in the class
+            EquipOverviewItem* mi = dynamic_cast<EquipOverviewItem*>(item);
+            mi->name = name->text();
+            mi->nonGCDistance = nonGCDistance->text().toDouble();
+            mi->startSet = startSet->isChecked();
+            mi->startDate = startDate->dateTime();
+            mi->endSet = endSet->isChecked();
+            mi->endDate = endDate->dateTime();
             mi->bgcolor = bgcolor->getColor().name();
         }
         break;

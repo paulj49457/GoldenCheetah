@@ -250,6 +250,17 @@ OverviewWindow::getConfiguration() const
                 config += "\"symbol\":\"" + QString("%1").arg(meta->symbol) + "\",";
             }
             break;
+        case OverviewItemType::EQUIP:
+        {
+                // file export
+            EquipOverviewItem* meta = reinterpret_cast<EquipOverviewItem*>(item);
+            config += "\"nonGCDistance\":\"" + QString("%1").arg(meta->nonGCDistance) + "\",";
+            config += "\"startSet\":\"" + QString("%1").arg(meta->startSet ? "1" : "0") + "\",";
+            config += "\"startDate\":\"" + QString("%1").arg(meta->startDate.toString()) + "\",";
+            config += "\"endSet\":\"" + QString("%1").arg(meta->endSet ? "1" : "0") + "\",";
+            config += "\"endDate\":\"" + QString("%1").arg(meta->endDate.toString()) + "\",";
+        }
+        break;
         case OverviewItemType::PMC:
             {
                 PMCOverviewItem *pmc = reinterpret_cast<PMCOverviewItem*>(item);
@@ -475,6 +486,20 @@ badconfig:
                 space->addItem(order,column,span,deep, add);
             }
             break;
+
+        case OverviewItemType::EQUIP:
+        {
+                // file import
+            double nonGCDistance = obj["nonGCDistance"].toString().toDouble();
+            bool startSet = (obj["startSet"].toString() == "1") ? true : false;
+            QDateTime startDate = QDateTime::fromString(obj["startDate"].toString());
+            bool endSet = (obj["endSet"].toString() == "1") ? true : false;
+            QDateTime endDate = QDateTime::fromString(obj["endDate"].toString());
+            add = new EquipOverviewItem(space, name, nonGCDistance, startSet, startDate, endSet, endDate);
+            add->datafilter = datafilter;
+            space->addItem(order, column, span, deep, add);
+        }
+        break;
 
         case OverviewItemType::PMC :
             {

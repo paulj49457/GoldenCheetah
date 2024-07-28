@@ -38,6 +38,7 @@ Q_OBJECT
                  ScopeBar_Trends,
                  ScopeBar_Rides,
                  ScopeBar_Train,
+                 ScopeBar_Equipment,
                  ScopeBar_Sync,
                  ScopeBar_Options,
 
@@ -169,6 +170,7 @@ Q_OBJECT
                  SideBarTrainView_Workouts,
                  SideBarTrainView_Media,
                  SideBarTrainView_VideoSync,
+				 SideBarEquipmentView_Eq,
 
                  ComparePane,
                  WorkoutControl,

@@ -49,7 +49,7 @@ class ColorButton;
 #define ROUTEPOINTS 250
 
 // types we use start from 100 to avoid clashing with main chart types
-enum OverviewItemType { RPE=100, METRIC, META, ZONE, INTERVAL, PMC, ROUTE, KPI,
+enum OverviewItemType { RPE=100, METRIC, META, EQUIP, ZONE, INTERVAL, PMC, ROUTE, KPI,
                         TOPN, DONUT, ACTIVITIES, ATHLETE, DATATABLE, USERCHART };
 
 //
@@ -108,6 +108,11 @@ class OverviewItemConfig : public QWidget
         MetricSelect *metric1, *metric2, *metric3; // Metric/Interval/PMC
         MetricSelect *meta1; // Meta
         SeriesSelect *series1; // Zone Histogram
+    
+        QLineEdit *description, *nonGCDistance, *replacementDistance;
+        QCheckBox *startSet, *endSet;
+        QDateTimeEdit *startDate, *endDate;
+        QPlainTextEdit *plainText;
 
         // background color
         ColorButton *bgcolor;
@@ -347,31 +352,68 @@ class MetaOverviewItem : public ChartSpaceItem
 {
     Q_OBJECT
 
+public:
+
+    MetaOverviewItem(ChartSpace* parent, QString name, QString symbol);
+    ~MetaOverviewItem();
+
+    void itemPaint(QPainter* painter, const QStyleOptionGraphicsItem*, QWidget*) override;
+    void itemGeometryChanged() override;
+    void setData(RideItem* item) override;
+    void setDateRange(DateRange) override {} // doesn't support trends view
+
+    QWidget* config() override { return configwidget; }
+
+    // create and config
+    static ChartSpaceItem* create(ChartSpace* parent) { return new MetaOverviewItem(parent, tr("Workout Code"), "Workout Code"); }
+
+    void configChanged(qint32) override;
+
+    QString symbol;
+    int fieldtype;
+
+    // for numeric metadata items
+    bool up, showrange;
+    QString value, upper, lower, mean;
+
+    Sparkline* sparkline;
+
+    OverviewItemConfig* configwidget;
+};
+
+class EquipOverviewItem : public ChartSpaceItem
+{
+    Q_OBJECT
+
     public:
 
-        MetaOverviewItem(ChartSpace *parent, QString name, QString symbol);
-        ~MetaOverviewItem();
+        EquipOverviewItem(ChartSpace *parent,
+                        const QString& name, const double& nonGCDistance,
+                        bool startSet, const QDateTime& startDate,
+                        bool endSet, const QDateTime& endDate);
+        ~EquipOverviewItem();
 
         void itemPaint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) override;
         void itemGeometryChanged() override;
-        void setData(RideItem *item) override;
-        void setDateRange(DateRange) override {} // doesn't support trends view
+
+        // The following don't apply to the Equipment Item.
+        void setData(RideItem*) override;
+        void setDateRange(DateRange) override {}
 
         QWidget *config() override { return configwidget; }
 
         // create and config
-        static ChartSpaceItem *create(ChartSpace *parent) { return new MetaOverviewItem(parent, tr("Workout Code"), "Workout Code"); }
+        static ChartSpaceItem *create(ChartSpace *parent) { return new EquipOverviewItem(parent, tr("Equipment Id"), 0.0, false, QDateTime(), false, QDateTime()); }
 
         void configChanged(qint32) override;
 
-        QString symbol;
-        int fieldtype;
+        // Primary state
+        double nonGCDistance, replacementDistance;
+        QDateTime startDate, endDate;
+        bool startSet, endSet;
 
-        // for numeric metadata items
-        bool up, showrange;
-        QString value, upper, lower, mean;
-
-        Sparkline *sparkline;
+        // Calculate state
+        double gcDistance, totalDistance;
 
         OverviewItemConfig *configwidget;
 };

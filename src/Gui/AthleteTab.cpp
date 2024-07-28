@@ -30,6 +30,9 @@
 
 #include <QPaintEvent>
 
+EquipView* AthleteTab::equipView = nullptr;
+QStackedWidget* AthleteTab::equipControls = nullptr;
+
 AthleteTab::AthleteTab(Context *context) : QWidget(context->mainWindow), context(context), noswitch(true)
 {
     context->tab = this;
@@ -77,6 +80,15 @@ AthleteTab::AthleteTab(Context *context) : QWidget(context->mainWindow), context
     trainControls->setContentsMargins(0,0,0,0);
     trainView = new TrainView(context, trainControls);
 
+    // Equipment
+    if (equipControls == nullptr) {
+        equipControls = new QStackedWidget(this);
+        equipControls->setFrameStyle(QFrame::Plain | QFrame::NoFrame);
+        equipControls->setCurrentIndex(0);
+        equipControls->setContentsMargins(0, 0, 0, 0);
+        equipView = new EquipView(context, equipControls);
+    }
+
     // although the views are created with analysis created first
     // we add them to the views and master controls in the old
     // order to make sure we select the right stack index
@@ -85,11 +97,13 @@ AthleteTab::AthleteTab(Context *context) : QWidget(context->mainWindow), context
     views->addWidget(analysisView);
     views->addWidget(diaryView);
     views->addWidget(trainView);
+    views->addWidget(equipView);
 
     masterControls->addWidget(homeControls);
     masterControls->addWidget(analysisControls);
     masterControls->addWidget(diaryControls);
     masterControls->addWidget(trainControls);
+    masterControls->addWidget(equipControls);
 
     // the dialog box for the chart settings
     chartSettings = new ChartSettings(this, masterControls);
@@ -116,6 +130,7 @@ AthleteTab::~AthleteTab()
     delete homeView;
     delete trainView;
     delete diaryView;
+    delete equipView;
     delete views;
     delete nav;
 }
@@ -127,11 +142,13 @@ AthleteTab::close()
     homeView->saveState();
     trainView->saveState();
     diaryView->saveState();
+    equipView->saveState();
 
     analysisView->close();
     homeView->close();
     trainView->close();
     diaryView->close();
+    equipView->close();
 }
 
 /******************************************************************************
@@ -157,6 +174,7 @@ void AthleteTab::setRide(RideItem*ride)
     homeView->setRide(ride);
     trainView->setRide(ride);
     diaryView->setRide(ride);
+    // equipView is not interested in rides
 }
 
 AbstractView *
@@ -168,6 +186,7 @@ AthleteTab::view(int index)
         case 1 : return analysisView;
         case 2 : return diaryView;
         case 3 : return trainView;
+        case 4 : return equipView;
     }
 }
 
