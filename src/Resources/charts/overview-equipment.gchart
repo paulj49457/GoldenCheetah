@@ -1,0 +1,18 @@
+{
+	"CHART":{
+		"VERSION":"1",
+		"VIEW":"equipment",
+		"TYPE":"51",
+		"PROPERTIES":{
+			"title":"Bike 1 ",
+			"subtitle":" ",
+			"widthFactor":"2",
+			"heightFactor":"2",
+			"style":"0",
+			"resizable":"0",
+			"config":"{\n  \"version\":\"2.0\",\n  \"widths\":[ 1200, 1200, 1200, 1200, 1200, 1200, 1200, 1200, 1200, 1200 ],\n  \"CHARTS\":[\n  ]\n}\n ",
+			"minimumColumns":"5",
+			"__LAST__":"1"
+		}
+	}
+}

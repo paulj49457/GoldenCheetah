@@ -119,6 +119,8 @@ Q_OBJECT
                  ChartDiary_Calendar,
                  ChartDiary_Navigator,
 
+                 ChartEquip_Overview_Config,
+
                  ChartRides_Overview,
                  ChartRides_Overview_Config,
                  ChartRides_Summary,

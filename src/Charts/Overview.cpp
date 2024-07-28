@@ -42,6 +42,12 @@ OverviewWindow::OverviewWindow(Context *context, int scope, bool blank) : GcChar
     QAction *settings= new QAction(tr("Settings..."));
     addAction(settings);
 
+    if (scope & OverviewScope::EQUIPMENT) {
+        QAction* calc = new QAction(tr("Calc..."));
+        addAction(calc);
+        connect(calc, SIGNAL(triggered(bool)), this, SLOT(calculate()));
+    }
+
     // settings
     QWidget *controls=new QWidget(this);
     QFormLayout *formlayout = new QFormLayout(controls);
@@ -255,6 +261,7 @@ OverviewWindow::getConfiguration() const
                 // file export
             EquipOverviewItem* meta = reinterpret_cast<EquipOverviewItem*>(item);
             config += "\"nonGCDistance\":\"" + QString("%1").arg(meta->nonGCDistance) + "\",";
+            config += "\"gcDistance\":\"" + QString("%1").arg(meta->getGCDistance()) + "\",";
             config += "\"startSet\":\"" + QString("%1").arg(meta->startSet ? "1" : "0") + "\",";
             config += "\"startDate\":\"" + QString("%1").arg(meta->startDate.toString()) + "\",";
             config += "\"endSet\":\"" + QString("%1").arg(meta->endSet ? "1" : "0") + "\",";
@@ -361,6 +368,7 @@ defaultsetup:
         QString source;
         if (scope == OverviewScope::ANALYSIS) source = ":charts/overview-analysis.gchart";
         if (scope == OverviewScope::TRENDS) source = ":charts/overview-trends.gchart";
+        if (scope == OverviewScope::EQUIPMENT) source = ":charts/overview-equipment.gchart";
 
         QFile file(source);
         if (file.open(QIODevice::ReadOnly)) {
@@ -491,11 +499,12 @@ badconfig:
         {
                 // file import
             double nonGCDistance = obj["nonGCDistance"].toString().toDouble();
+            double gcDistance = obj["gcDistance"].toString().toDouble();
             bool startSet = (obj["startSet"].toString() == "1") ? true : false;
             QDateTime startDate = QDateTime::fromString(obj["startDate"].toString());
             bool endSet = (obj["endSet"].toString() == "1") ? true : false;
             QDateTime endDate = QDateTime::fromString(obj["endDate"].toString());
-            add = new EquipOverviewItem(space, name, nonGCDistance, startSet, startDate, endSet, endDate);
+            add = new EquipOverviewItem(space, name, nonGCDistance, gcDistance, startSet, startDate, endSet, endDate);
             add->datafilter = datafilter;
             space->addItem(order, column, span, deep, add);
         }
@@ -613,6 +622,8 @@ OverviewConfigDialog::OverviewConfigDialog(ChartSpaceItem*item) : QDialog(NULL),
     HelpWhatsThis *help = new HelpWhatsThis(this);
     if (item->parent->scope & OverviewScope::ANALYSIS) {
         this->setWhatsThis(help->getWhatsThisText(HelpWhatsThis::ChartRides_Overview_Config).arg(itemDetail.quick, itemDetail.description));
+    } else if (item->parent->scope & OverviewScope::EQUIPMENT) {
+            this->setWhatsThis(help->getWhatsThisText(HelpWhatsThis::ChartEquip_Overview_Config).arg(itemDetail.quick, itemDetail.description));
     } else {
         this->setWhatsThis(help->getWhatsThisText(HelpWhatsThis::Chart_Overview_Config).arg(itemDetail.quick, itemDetail.description));
     }
@@ -762,3 +773,151 @@ OverviewConfigDialog::exportChart()
 
 
 }
+
+// ---------------------------- EquipCalculator -----------------------------------
+
+EquipCalculator::EquipCalculator(Context* context) : context_(context)
+{
+}
+
+EquipCalculator::~EquipCalculator()
+{
+}
+
+void
+EquipCalculator::eqRecalculationStart(const QString& eqLinkName, ChartSpace* space)
+{
+    // already recalcuating !
+    if (recalculationThreads_.count()) return;
+
+    eqTiles_ = space->allItems();
+    eqLinkName_ = eqLinkName;
+
+    // Reset all the tiles distances
+    for (ChartSpaceItem* eqTile : eqTiles_) {
+        static_cast<EquipOverviewItem*>(eqTile)->resetDistanceCovered();
+    }
+
+    // update the last recalcuation time & units used
+    //equipeqCalc_->rootItem_->setMetricUnits(GlobalContext::context()->useMetricUnits);
+
+    // Currently this code restricts the calculation to a single athlete, so possibly needs looking
+    // at to provide a general calcluation of distances of equipment used by all athletes.
+
+    // take a copy of the rides through the athlete's rides creating a ride List to process
+    rideItemList_ = context_->athlete->rideCache->rides();
+
+    // calculate number of threads and work per thread
+    int maxthreads = QThreadPool::globalInstance()->maxThreadCount();
+    int threads = maxthreads / 4; // Don't need many threads
+    if (threads == 0) threads = 1; // but need at least one!
+
+    // keep launching the threads
+    while (threads--) {
+
+        // if goes past last make it the last
+        EquipCalculationThread* thread = new EquipCalculationThread(this);
+        recalculationThreads_ << thread;
+
+        thread->start();
+    }
+}
+
+RideItem*
+EquipCalculator::nextRideToCheck()
+{
+    RideItem* returning;
+    updateMutex_.lock();
+
+    if (rideItemList_.isEmpty()) {
+        returning = nullptr;
+    }
+    else {
+        returning = rideItemList_.takeLast();
+    }
+    updateMutex_.unlock();
+    return(returning);
+}
+
+void
+EquipCalculationThread::run() {
+
+    RideItem* item;
+    while (item = eqCalc_->nextRideToCheck()) {
+        eqCalc_->RecalculateEq(item);
+    }
+    eqCalc_->threadCompleted(this);
+    return;
+}
+
+void
+EquipCalculator::threadCompleted(EquipCalculationThread* thread)
+{
+    updateMutex_.lock();
+    recalculationThreads_.removeOne(thread);
+    updateMutex_.unlock();
+
+    if (recalculationThreads_.count() == 0) {
+
+       // ptj equipeqCalc_->rootItem_->setLastRecalc(QDateTime::currentDateTime());
+
+        printf("EquipCalculator::threadCompleted - finished\n");
+
+        // Notify that recalculation is complete
+        context_->notifyEqRecalculationEnd();
+    }
+}
+
+void
+EquipCalculator::RecalculateEq(RideItem* rideItem)
+{
+    if (rideItem->getText("EquipmentLink", "abcde") == eqLinkName_) {
+
+        printf("EquipCalculator::RecalculateEq - matched ride\n");
+
+        QDate dRef = QDate(1900, 01, 01).addDays(rideItem->getText("Start Date", "0").toInt());
+        QTime tRef = QTime(0, 0, 0).addSecs(rideItem->getText("Start Time", "0").toInt());
+
+        QDateTime actDateTime = QDateTime(dRef, tRef);
+
+        // get the distance metric
+        double dist = rideItem->getStringForSymbol("total_distance", GlobalContext::context()->useMetricUnits).toDouble();
+
+        for (ChartSpaceItem* eqTile : eqTiles_) {
+
+            printf("EquipCalculator::RecalculateEq - tile check\n");
+
+            if (static_cast<EquipOverviewItem*>(eqTile)->isWithin(actDateTime)) {
+
+                printf("EquipCalculator::RecalculateEq - matched time\n");
+
+               // ptj tiles_->incrementActivities();
+                static_cast<EquipOverviewItem*>(eqTile)->incrementDistanceCovered(dist);
+            }
+        }
+    }
+}
+
+EquipOverviewWindow::EquipOverviewWindow(Context* context, int scope, bool blank) :
+    OverviewWindow(context, scope, blank)
+{
+    eqCalc = new EquipCalculator(context);
+}
+
+EquipOverviewWindow::~EquipOverviewWindow()
+{
+    delete eqCalc;
+}
+
+void EquipOverviewWindow::calculate()
+{
+    printf("EquipOverviewWindow::calculate\n");
+
+    //const QList<ChartSpaceItem*> allItems() { return items; }
+
+    printf("Window: %s \n", title().toStdString().c_str());
+
+    eqCalc->eqRecalculationStart(title(), space);
+
+}
+

@@ -61,14 +61,17 @@ class OverviewWindow : public GcChartWindow
         void addTile();
         void importChart();
         void settings();
+        virtual void calculate() {}
 
         // config item requested
         void configItem(ChartSpaceItem *);
 
+    protected:
+        ChartSpace* space;
+
     private:
 
         // gui setup
-        ChartSpace *space;
         bool configured;
         int scope;
         bool blank;
@@ -95,6 +98,64 @@ class OverviewConfigDialog : public QDialog
         ChartSpaceItem *item;
         QVBoxLayout *main;
         QPushButton *remove, *ok, *exp;
+};
+
+class EquipCalculator;
+
+class EquipCalculationThread : public QThread
+{
+    public:
+        EquipCalculationThread(EquipCalculator* eqCalc) : eqCalc_(eqCalc) {}
+
+    protected:
+
+        // recalculate distances
+        virtual void run() override;
+
+    private:
+        EquipCalculator* eqCalc_;
+};
+
+class EquipCalculator
+{
+    public:
+        EquipCalculator(Context* context);
+        virtual ~EquipCalculator();
+
+        void eqRecalculationStart(const QString& eqLink, ChartSpace* space);
+
+    protected:
+
+        friend class ::EquipCalculationThread;
+
+        // distance calculation
+        void RecalculateEq(RideItem* rideItem);
+        RideItem* nextRideToCheck();
+        void threadCompleted(EquipCalculationThread* thread);
+
+        // Equipment distance recalculation
+        QMutex updateMutex_;
+        QVector<EquipCalculationThread*> recalculationThreads_;
+        QVector<RideItem*>  rideItemList_;
+
+        QString eqLinkName_;
+        QList<ChartSpaceItem*> eqTiles_;
+        Context* context_;
+
+};
+
+class EquipOverviewWindow : public OverviewWindow
+{
+    public:
+
+        EquipOverviewWindow(Context* context, int scope = OverviewScope::ANALYSIS, bool blank = false);
+
+        virtual ~EquipOverviewWindow();
+
+        virtual void calculate() override;
+
+    protected:
+        EquipCalculator* eqCalc;
 };
 
 #endif // _GC_OverviewWindow_h

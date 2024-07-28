@@ -234,7 +234,7 @@ class ChartSpace : public QWidget
 
         // to get paint device
         QGraphicsView *device() { return view; }
-        const QList<ChartSpaceItem*> allItems() { return items; }
+        QList<ChartSpaceItem*> allItems() { return items; }
 
         // window we are rendered in
         GcWindow *window;

@@ -29,7 +29,6 @@
 #include "RideItem.h"
 #include "TimeUtils.h"
 #include "DragBar.h"
-#include "EquipmentModelManager.h"
 #ifdef GC_HAS_CLOUD_DB
 #include "CloudDBChart.h"
 #include "CloudDBUserMetric.h"
@@ -74,8 +73,6 @@ class AthleteLoader;
 class Context;
 class AthleteTab;
 class GGraphicsView;
-class EquipmentModelManager;
-
 
 extern QList<MainWindow *> mainwindows; // keep track of all the MainWindows we have open
 extern QString gcroot;                  // root directory for gc
@@ -104,8 +101,6 @@ class MainWindow : public QMainWindow
         void switchPerspective(int index);
 
         bool isStarting() const;
-
-		EquipmentModelManager* equipmentModelMngr;
 
     protected:
 

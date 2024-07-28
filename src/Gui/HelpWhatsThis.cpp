@@ -223,6 +223,8 @@ HelpWhatsThis::getText(GCHelp chapter) {
         return text.arg("ChartTypes_Activities#Overview").arg(tr("Dashboard for a single activity - the tiles shown here are configurable"));
     case ChartRides_Overview_Config:
         return text.arg("ChartTypes_Activities#Overview-%1");
+    case ChartEquip_Overview_Config:
+        return text.arg("ChartTypes_Equipment#Overview-%1");
     case ChartRides_Summary:
         return text.arg("ChartTypes_Activities#activity-summary").arg(tr("Detailed information of a single activity - the metrics shown here are configurable"));
     case ChartRides_Details:

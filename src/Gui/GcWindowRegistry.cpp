@@ -256,7 +256,7 @@ GcWindowRegistry::newGcWindow(GcWinID id, Context *context)
     case GcWindowTypes::SeasonPlan: returning = new PlanningWindow(context); break;
     case GcWindowTypes::UserAnalysis: returning = new UserChartWindow(context, false); break;
     case GcWindowTypes::UserTrends: returning = new UserChartWindow(context, true); break;
-    case GcWindowTypes::OverviewEquipment: returning = new OverviewWindow(context, EQUIPMENT); if (id != GcWindowTypes::OverviewEquipment) { id = GcWindowTypes::OverviewEquipment; static_cast<OverviewWindow*>(returning)->setConfiguration(""); } break;
+    case GcWindowTypes::OverviewEquipment: returning = new EquipOverviewWindow(context, EQUIPMENT); if (id != GcWindowTypes::OverviewEquipment) { id = GcWindowTypes::OverviewEquipment; static_cast<OverviewWindow*>(returning)->setConfiguration(""); } break;
     default: return NULL; break;
     }
     if (returning) returning->setProperty("type", QVariant::fromValue<GcWinID>(id));

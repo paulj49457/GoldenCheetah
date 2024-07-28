@@ -32,6 +32,9 @@
 #include <QLineSeries>
 #include <QCursor>
 
+// Atomics
+#include <memory>
+
 // subwidgets for viz inside each overview item
 class RPErating;
 class BPointF;
@@ -388,7 +391,7 @@ class EquipOverviewItem : public ChartSpaceItem
     public:
 
         EquipOverviewItem(ChartSpace *parent,
-                        const QString& name, const double& nonGCDistance,
+                        const QString& name, const double& nonGCDistance, const double& gcDistance,
                         bool startSet, const QDateTime& startDate,
                         bool endSet, const QDateTime& endDate);
         ~EquipOverviewItem();
@@ -399,11 +402,16 @@ class EquipOverviewItem : public ChartSpaceItem
         // The following don't apply to the Equipment Item.
         void setData(RideItem*) override;
         void setDateRange(DateRange) override {}
+        void resetDistanceCovered();
+        void setNonGCDistance(double nonGCDistance);
+        void incrementDistanceCovered(double addDistance);
+        bool isWithin(const QDateTime& time) const;
+        double getGCDistance() { return gcDistance; }
 
         QWidget *config() override { return configwidget; }
 
         // create and config
-        static ChartSpaceItem *create(ChartSpace *parent) { return new EquipOverviewItem(parent, tr("Equipment Id"), 0.0, false, QDateTime(), false, QDateTime()); }
+        static ChartSpaceItem *create(ChartSpace *parent) { return new EquipOverviewItem(parent, tr("Equipment Id"), 0.0, 0.0, false, QDateTime(), false, QDateTime()); }
 
         void configChanged(qint32) override;
 
@@ -412,8 +420,10 @@ class EquipOverviewItem : public ChartSpaceItem
         QDateTime startDate, endDate;
         bool startSet, endSet;
 
+    private:
         // Calculate state
-        double gcDistance, totalDistance;
+        std::atomic<double> gcDistance;
+        std::atomic<double> totalDistance;
 
         OverviewItemConfig *configwidget;
 };

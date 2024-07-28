@@ -931,17 +931,20 @@ MetaOverviewItem::~MetaOverviewItem()
 }
 
 EquipOverviewItem::EquipOverviewItem(ChartSpace* parent,
-                                    const QString& name, const double& nonGCDistance,
+                                    const QString& name, const double& nonGCDistance, const double& gcDistance,
                                     bool startSet, const QDateTime& startDate,
                                     bool endSet, const QDateTime& endDate) : ChartSpaceItem(parent, name)
 {
     // metric or meta or pmc
     this->type = OverviewItemType::EQUIP;
     this->nonGCDistance = nonGCDistance;
+    this->gcDistance = gcDistance;
     this->startSet = startSet;
     this->startDate = startDate;
     this->endSet = endSet;
     this->endDate = endDate;
+
+    totalDistance = nonGCDistance + gcDistance;
 
     configwidget = new OverviewItemConfig(this);
     configwidget->hide();
@@ -1853,6 +1856,48 @@ MetaOverviewItem::setData(RideItem *item)
 void
 EquipOverviewItem::setData(RideItem*)
 {
+}
+
+void
+EquipOverviewItem::resetDistanceCovered()
+{
+    gcDistance = 0;
+    totalDistance = nonGCDistance;
+}
+
+void
+EquipOverviewItem::setNonGCDistance(double nonGCDistance)
+{
+    nonGCDistance = nonGCDistance;
+    totalDistance = nonGCDistance + gcDistance;
+}
+
+void
+EquipOverviewItem::incrementDistanceCovered(double addDistance) {
+
+    // Atomic safe addition of doubles, without c++20
+    auto current = gcDistance.load();
+    while (!gcDistance.compare_exchange_weak(current, current + addDistance))
+        ;
+
+    auto current1 = totalDistance.load();
+    while (!totalDistance.compare_exchange_weak(current1, current1 + addDistance))
+        ;
+}
+
+bool
+EquipOverviewItem::isWithin(const QDateTime& time) const {
+
+    if (!startSet)
+        if (!endSet)
+            return true; // no range set
+        else
+            return (time < endDate); // end set but not beginning !
+    else
+        if (!endSet)
+            return (startDate <= time);
+        else
+            return (startDate <= time) && (time < endDate);
 }
 
 void
@@ -3629,13 +3674,22 @@ EquipOverviewItem::itemPaint(QPainter* painter, const QStyleOptionGraphicsItem*,
 
             // draw text and wrap / truncate to bounding rectangle
             painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 2.5, geometry().width() - (ROWHEIGHT * 2),
-                geometry().height() - (ROWHEIGHT * 4)), QString::number(nonGCDistance, 'f', 2));
+                geometry().height() - (ROWHEIGHT * 4)), QString("nonGCDistance: ") + QString::number(nonGCDistance, 'f', 2));
 
             painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 3.5, geometry().width() - (ROWHEIGHT * 2),
-                geometry().height() - (ROWHEIGHT * 4)), startDate.toString(time_format));
+                geometry().height() - (ROWHEIGHT * 4)), QString("gcDistance: ") + QString::number(gcDistance, 'f', 2));
 
             painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 4.5, geometry().width() - (ROWHEIGHT * 2),
-                geometry().height() - (ROWHEIGHT * 4)), endDate.toString(time_format));
+                geometry().height() - (ROWHEIGHT * 4)), QString("totalDistance: ") + QString::number(totalDistance, 'f', 2));
+
+            painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 5.5, geometry().width() - (ROWHEIGHT * 2),
+                geometry().height() - (ROWHEIGHT * 4)), QString("replacementDistance: ") + QString::number(replacementDistance, 'f', 2));
+
+            painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 6.5, geometry().width() - (ROWHEIGHT * 2),
+                geometry().height() - (ROWHEIGHT * 4)), QString("startDate: ") + startDate.toString(time_format));
+
+            painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 7.5, geometry().width() - (ROWHEIGHT * 2),
+                geometry().height() - (ROWHEIGHT * 4)), QString("endDate: ") + endDate.toString(time_format));
 
 
         }
@@ -3777,6 +3831,7 @@ static bool insensitiveLessThan(const QString &a, const QString &b)
 {
     return a.toLower() < b.toLower();
 }
+
 OverviewItemConfig::OverviewItemConfig(ChartSpaceItem *item) : QWidget(NULL), item(item), block(false)
 {
     QVBoxLayout *main = new QVBoxLayout(this);
@@ -3858,6 +3913,13 @@ OverviewItemConfig::OverviewItemConfig(ChartSpaceItem *item) : QWidget(NULL), it
         nonGCDistance = new QLineEdit(this);
         connect(nonGCDistance, SIGNAL(textChanged(QString)), this, SLOT(dataChanged()));
         layout->addRow(tr("Non GC Distance"), nonGCDistance);
+
+  /*      void
+            EquipmentDistanceNode::setNonGCDistance(double nonGCDistance)
+        {
+            nonGCDistance_ = nonGCDistance;
+            totalDistance_ = nonGCDistance_ + gcDistance_;
+        } ptj */
 
         startSet = new QCheckBox(this);
         connect(startSet, SIGNAL(stateChanged(int)), this, SLOT(dataChanged()));

@@ -153,7 +153,6 @@ MainWindow::MainWindow(const QDir &home)
     Context *context = new Context(this);
     context->athlete = new Athlete(context, home);
     currentAthleteTab = new AthleteTab(context);
-    equipmentModelMngr = new EquipmentModelManager(context);
 
     setWindowIcon(QIcon(":images/gc.png"));
     setWindowTitle(context->athlete->home->root().dirName());
@@ -871,8 +870,6 @@ MainWindow::setChartMenu()
         case 4 : mask = VIEW_EQUIPMENT; break;
     }
 
-    printf("MainWindow::setChartMenu %d \n", currentAthleteTab->currentView());
-
     chartMenu->clear();
     if (!mask) return;
 
@@ -903,8 +900,6 @@ MainWindow::setChartMenu(QMenu *menu)
 		case 3 : mask = VIEW_TRAIN; break;
 		case 4 : mask = VIEW_EQUIPMENT; break;
     }
-    printf("MainWindow::setChartMenu(QMenu) %d \n", currentAthleteTab->currentView());
-
 
     menu->clear();
     if (!mask) return;
@@ -1126,9 +1121,6 @@ MainWindow::closeEvent(QCloseEvent* event)
 {
     QGuiApplication::setOverrideCursor(Qt::WaitCursor);
 
-	// Save equipment configuration
-	equipmentModelMngr->close();
-
     QList<AthleteTab*> closing = tabList;
     bool needtosave = false;
     bool importrunning = false;
@@ -1186,9 +1178,6 @@ MainWindow::~MainWindow()
     // aside from the tabs, we may need to clean
     // up any dangling widgets created in MainWindow::MainWindow (?)
     if (configdialog_ptr) configdialog_ptr->close();
-
-	// tidy up equipment instances
-	delete equipmentModelMngr;
 }
 
 // global search/data filter
