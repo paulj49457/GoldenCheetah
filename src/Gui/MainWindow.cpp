@@ -1361,7 +1361,6 @@ MainWindow::selectEquipment()
     sidebar->setItemSelected(6, true);
     currentAthleteTab->selectView(4);
     perspectiveSelector->hide();
-    setToolButtons(); // -- ptj ???
 }
 
 void

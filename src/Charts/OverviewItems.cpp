@@ -3667,28 +3667,32 @@ EquipOverviewItem::itemPaint(QPainter* painter, const QStyleOptionGraphicsItem*,
 
         if (1) {
             // long texts need to be formatted into a smaller font an word wrapped
-            painter->setPen(QColor(150, 150, 150));
-            painter->setFont(parent->smallfont);
+
+            painter->setPen(GColor(CPLOTMARKER));
+            painter->setFont(parent->bigfont);
 
             static QString time_format = "HH:mm dd MMM yyyy";
 
+            painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 1.5, geometry().width() - (ROWHEIGHT * 2),
+                geometry().height() - (ROWHEIGHT * 4)), QString::number(totalDistance, 'f', 2));
+
+            painter->setPen(QColor(150, 150, 150));
+            painter->setFont(parent->smallfont);
+
             // draw text and wrap / truncate to bounding rectangle
-            painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 2.5, geometry().width() - (ROWHEIGHT * 2),
+            painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 4.0, geometry().width() - (ROWHEIGHT * 2),
                 geometry().height() - (ROWHEIGHT * 4)), QString("nonGCDistance: ") + QString::number(nonGCDistance, 'f', 2));
 
-            painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 3.5, geometry().width() - (ROWHEIGHT * 2),
+            painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 5.0, geometry().width() - (ROWHEIGHT * 2),
                 geometry().height() - (ROWHEIGHT * 4)), QString("gcDistance: ") + QString::number(gcDistance, 'f', 2));
 
-            painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 4.5, geometry().width() - (ROWHEIGHT * 2),
-                geometry().height() - (ROWHEIGHT * 4)), QString("totalDistance: ") + QString::number(totalDistance, 'f', 2));
-
-            painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 5.5, geometry().width() - (ROWHEIGHT * 2),
+            painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 6.0, geometry().width() - (ROWHEIGHT * 2),
                 geometry().height() - (ROWHEIGHT * 4)), QString("replacementDistance: ") + QString::number(replacementDistance, 'f', 2));
 
-            painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 6.5, geometry().width() - (ROWHEIGHT * 2),
+            painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 7.0, geometry().width() - (ROWHEIGHT * 2),
                 geometry().height() - (ROWHEIGHT * 4)), QString("startDate: ") + startDate.toString(time_format));
 
-            painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 7.5, geometry().width() - (ROWHEIGHT * 2),
+            painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 8.0, geometry().width() - (ROWHEIGHT * 2),
                 geometry().height() - (ROWHEIGHT * 4)), QString("endDate: ") + endDate.toString(time_format));
 
 

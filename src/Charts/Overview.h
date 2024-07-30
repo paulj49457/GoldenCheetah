@@ -148,7 +148,7 @@ class EquipOverviewWindow : public OverviewWindow
 {
     public:
 
-        EquipOverviewWindow(Context* context, int scope = OverviewScope::ANALYSIS, bool blank = false);
+        EquipOverviewWindow(Context* context, int scope = OverviewScope::EQUIPMENT, bool blank = false);
 
         virtual ~EquipOverviewWindow();
 

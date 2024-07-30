@@ -911,12 +911,6 @@ EquipOverviewWindow::~EquipOverviewWindow()
 
 void EquipOverviewWindow::calculate()
 {
-    printf("EquipOverviewWindow::calculate\n");
-
-    //const QList<ChartSpaceItem*> allItems() { return items; }
-
-    printf("Window: %s \n", title().toStdString().c_str());
-
     eqCalc->eqRecalculationStart(title(), space);
 
 }
