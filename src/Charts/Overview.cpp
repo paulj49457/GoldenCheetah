@@ -260,12 +260,14 @@ OverviewWindow::getConfiguration() const
         {
                 // file export
             EquipOverviewItem* meta = reinterpret_cast<EquipOverviewItem*>(item);
-            config += "\"nonGCDistance\":\"" + QString("%1").arg(meta->nonGCDistance) + "\",";
+            config += "\"nonGCDistance\":\"" + QString("%1").arg(meta->getNonGCDistance()) + "\",";
             config += "\"gcDistance\":\"" + QString("%1").arg(meta->getGCDistance()) + "\",";
+            config += "\"totalDistance\":\"" + QString("%1").arg(meta->getTotalDistance()) + "\",";
             config += "\"startSet\":\"" + QString("%1").arg(meta->startSet ? "1" : "0") + "\",";
             config += "\"startDate\":\"" + QString("%1").arg(meta->startDate.toString()) + "\",";
             config += "\"endSet\":\"" + QString("%1").arg(meta->endSet ? "1" : "0") + "\",";
             config += "\"endDate\":\"" + QString("%1").arg(meta->endDate.toString()) + "\",";
+            config += "\"notes\":\"" + QString("%1").arg(meta->notes) + "\",";
         }
         break;
         case OverviewItemType::PMC:
@@ -500,11 +502,16 @@ badconfig:
                 // file import
             double nonGCDistance = obj["nonGCDistance"].toString().toDouble();
             double gcDistance = obj["gcDistance"].toString().toDouble();
+            double totalDistance = obj["totalDistance"].toString().toDouble();
             bool startSet = (obj["startSet"].toString() == "1") ? true : false;
-            QDateTime startDate = QDateTime::fromString(obj["startDate"].toString());
+            QDate startDate = QDate::fromString(obj["startDate"].toString());
             bool endSet = (obj["endSet"].toString() == "1") ? true : false;
-            QDateTime endDate = QDateTime::fromString(obj["endDate"].toString());
-            add = new EquipOverviewItem(space, name, nonGCDistance, gcDistance, startSet, startDate, endSet, endDate);
+
+            add replacement distance here
+
+            QDate endDate = QDate::fromString(obj["endDate"].toString());
+            QString notes = obj["notes"].toString();
+            add = new EquipOverviewItem(space, name, nonGCDistance, gcDistance, totalDistance, startSet, startDate, endSet, endDate, notes);
             add->datafilter = datafilter;
             space->addItem(order, column, span, deep, add);
         }
@@ -862,9 +869,6 @@ EquipCalculator::threadCompleted(EquipCalculationThread* thread)
        // ptj equipeqCalc_->rootItem_->setLastRecalc(QDateTime::currentDateTime());
 
         printf("EquipCalculator::threadCompleted - finished\n");
-
-        // Notify that recalculation is complete
-        //context_->notifyEqRecalculationEnd();
     }
 }
 
@@ -875,19 +879,14 @@ EquipCalculator::RecalculateEq(RideItem* rideItem)
 
         printf("EquipCalculator::RecalculateEq - matched ride\n");
 
-        QDate dRef = QDate(1900, 01, 01).addDays(rideItem->getText("Start Date", "0").toInt());
-        QTime tRef = QTime(0, 0, 0).addSecs(rideItem->getText("Start Time", "0").toInt());
-
-        QDateTime actDateTime = QDateTime(dRef, tRef);
+        QDate actDate(QDate(1900, 01, 01).addDays(rideItem->getText("Start Date", "0").toInt()));
 
         // get the distance metric
         double dist = rideItem->getStringForSymbol("total_distance", GlobalContext::context()->useMetricUnits).toDouble();
 
         for (ChartSpaceItem* eqTile : eqTiles_) {
 
-            printf("EquipCalculator::RecalculateEq - tile check\n");
-
-            if (static_cast<EquipOverviewItem*>(eqTile)->isWithin(actDateTime)) {
+            if (static_cast<EquipOverviewItem*>(eqTile)->isWithin(actDate)) {
 
                 printf("EquipCalculator::RecalculateEq - matched time\n");
 

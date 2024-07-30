@@ -747,7 +747,8 @@ SOURCES += Cloud/CalendarDownload.cpp Cloud/CloudService.cpp \
 SOURCES += Core/Athlete.cpp Core/Context.cpp Core/DataFilter.cpp Core/FreeSearch.cpp Core/GcUpgrade.cpp Core/IdleTimer.cpp \
            Core/IntervalItem.cpp Core/main.cpp Core/NamedSearch.cpp Core/RideCache.cpp Core/RideCacheModel.cpp Core/RideItem.cpp \
            Core/Route.cpp Core/RouteParser.cpp Core/Season.cpp Core/SeasonParser.cpp Core/Settings.cpp Core/Specification.cpp \
-           Core/TimeUtils.cpp Core/Units.cpp Core/UserData.cpp Core/Utils.cpp Core/Measures.cpp Core/Quadtree.cpp Core/SplineLookup.cpp
+           Core/TimeUtils.cpp Core/Units.cpp Core/UserData.cpp Core/Utils.cpp \
+           Core/Measures.cpp Core/Quadtree.cpp Core/SplineLookup.cpp
 
 ## File and Device IO and Editing
 SOURCES += FileIO/ArchiveFile.cpp FileIO/AthleteBackup.cpp FileIO/Bin2RideFile.cpp FileIO/BinRideFile.cpp \

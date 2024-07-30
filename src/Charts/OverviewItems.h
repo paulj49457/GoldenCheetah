@@ -114,8 +114,8 @@ class OverviewItemConfig : public QWidget
     
         QLineEdit *description, *nonGCDistance, *replacementDistance;
         QCheckBox *startSet, *endSet;
-        QDateTimeEdit *startDate, *endDate;
-        QPlainTextEdit *plainText;
+        QDateEdit *startDate, *endDate;
+        QPlainTextEdit * notes;
 
         // background color
         ColorButton *bgcolor;
@@ -390,10 +390,10 @@ class EquipOverviewItem : public ChartSpaceItem
 
     public:
 
-        EquipOverviewItem(ChartSpace *parent,
-                        const QString& name, const double& nonGCDistance, const double& gcDistance,
-                        bool startSet, const QDateTime& startDate,
-                        bool endSet, const QDateTime& endDate);
+        EquipOverviewItem(ChartSpace *parent,const QString& name,
+                        const double& nonGCDistance, const double& gcDistance, const double& totalDistance,
+                        bool startSet, const QDate& startDate, bool endSet, const QDate& endDate,
+                        const QString& notes);
         ~EquipOverviewItem();
 
         void itemPaint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) override;
@@ -402,28 +402,36 @@ class EquipOverviewItem : public ChartSpaceItem
         // The following don't apply to the Equipment Item.
         void setData(RideItem*) override;
         void setDateRange(DateRange) override {}
+
+        bool isWithin(const QDate& actDate) const;
+        bool rangeIsValid() const;
+
         void resetDistanceCovered();
-        void setNonGCDistance(double nonGCDistance);
         void incrementDistanceCovered(double addDistance);
-        bool isWithin(const QDateTime& time) const;
-        double getGCDistance() { return gcDistance; }
+        void setNonGCDistance(double nonGCDistance);
+        double getNonGCDistance() const { return nonGCDistance_; }
+        double getGCDistance() const { return gcDistance_; }
+        double getTotalDistance() const { return totalDistance_; }
 
         QWidget *config() override { return configwidget; }
 
         // create and config
-        static ChartSpaceItem *create(ChartSpace *parent) { return new EquipOverviewItem(parent, tr("Equipment Id"), 0.0, 0.0, false, QDateTime(), false, QDateTime()); }
+        static ChartSpaceItem *create(ChartSpace *parent) {
+            return new EquipOverviewItem(parent, tr("Equipment Id"), 0.0, 0.0, 0.0, false, QDate(), false, QDate(), ""); }
 
         void configChanged(qint32) override;
 
         // Primary state
-        double nonGCDistance, replacementDistance;
-        QDateTime startDate, endDate;
+        double replacementDistance;
+        QDate startDate, endDate;
         bool startSet, endSet;
+        QString notes;
 
     private:
         // Calculate state
-        std::atomic<double> gcDistance;
-        std::atomic<double> totalDistance;
+        double nonGCDistance_;
+        std::atomic<double> gcDistance_;
+        std::atomic<double> totalDistance_;
 
         OverviewItemConfig *configwidget;
 };
