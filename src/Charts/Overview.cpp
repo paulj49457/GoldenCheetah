@@ -864,7 +864,7 @@ EquipCalculator::threadCompleted(EquipCalculationThread* thread)
         printf("EquipCalculator::threadCompleted - finished\n");
 
         // Notify that recalculation is complete
-        context_->notifyEqRecalculationEnd();
+        //context_->notifyEqRecalculationEnd();
     }
 }
 

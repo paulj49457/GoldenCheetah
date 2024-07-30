@@ -74,6 +74,7 @@ class Context;
 class AthleteTab;
 class GGraphicsView;
 
+
 extern QList<MainWindow *> mainwindows; // keep track of all the MainWindows we have open
 extern QString gcroot;                  // root directory for gc
 

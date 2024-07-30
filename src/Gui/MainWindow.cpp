@@ -1120,7 +1120,6 @@ void
 MainWindow::closeEvent(QCloseEvent* event)
 {
     QGuiApplication::setOverrideCursor(Qt::WaitCursor);
-
     QList<AthleteTab*> closing = tabList;
     bool needtosave = false;
     bool importrunning = false;

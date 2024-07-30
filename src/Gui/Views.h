@@ -68,7 +68,6 @@ class DiaryView : public AbstractView
 
         DiaryView(Context *context, QStackedWidget *controls);
         ~DiaryView();
-
         void setRide(RideItem*ride) override;
 
     public slots:
@@ -119,10 +118,10 @@ class TrendsView : public AbstractView
         TrendsView(Context *context, QStackedWidget *controls);
         ~TrendsView();
 
-        int countActivities(Perspective*, DateRange dr);
-
         LTMSidebar *sidebar;
         Perspective *hw;
+
+        int countActivities(Perspective *, DateRange dr);
 
     signals:
         void dateChanged(DateRange);
