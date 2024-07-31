@@ -931,7 +931,8 @@ MetaOverviewItem::~MetaOverviewItem()
 }
 
 EquipOverviewItem::EquipOverviewItem(ChartSpace* parent, const QString& name,
-                                    const double& nonGCDistance, const double& gcDistance, const double& totalDistance,
+                                    const double& nonGCDistance, const double& gcDistance,
+                                    const double& totalDistance, const double& repDistance,
                                     bool startSet, const QDate& startDate, bool endSet, const QDate& endDate,
                                     const QString& notes) : ChartSpaceItem(parent, name)
 {
@@ -940,11 +941,12 @@ EquipOverviewItem::EquipOverviewItem(ChartSpace* parent, const QString& name,
     nonGCDistance_ = nonGCDistance;
     gcDistance_ = gcDistance;
     totalDistance_ = totalDistance;
-    this->startSet = startSet;
-    this->startDate = startDate;
-    this->endSet = endSet;
-    this->endDate = endDate;
-    this->notes = notes;
+    repDistance_ = repDistance;
+    startSet_ = startSet;
+    startDate_ = startDate;
+    endSet_ = endSet;
+    endDate_ = endDate;
+    notes_ = notes;
 
     configwidget = new OverviewItemConfig(this);
     configwidget->hide();
@@ -1854,11 +1856,6 @@ MetaOverviewItem::setData(RideItem *item)
 }
 
 void
-EquipOverviewItem::setData(RideItem*)
-{
-}
-
-void
 EquipOverviewItem::resetDistanceCovered()
 {
     gcDistance_ = 0;
@@ -1888,23 +1885,23 @@ EquipOverviewItem::incrementDistanceCovered(double addDistance) {
 bool
 EquipOverviewItem::isWithin(const QDate& actDate) const {
 
-    if (!startSet)
-        if (!endSet)
+    if (!startSet_)
+        if (!endSet_)
             return true; // no range set
         else
-            return (actDate <= endDate); // end set but not beginning !
+            return (actDate <= endDate_); // end set but not beginning !
     else
-        if (!endSet)
-            return (startDate <= actDate);
+        if (!endSet_)
+            return (startDate_ <= actDate);
         else
-            return (startDate <= actDate) && (actDate <= endDate);
+            return (startDate_ <= actDate) && (actDate <= endDate_);
 }
 
 bool
 EquipOverviewItem::rangeIsValid() const {
 
-    if (startSet && endSet)
-        return endDate >= startDate;
+    if (startSet_ && endSet_)
+        return endDate_ >= startDate_;
     else
         return true;
 }
@@ -3667,67 +3664,83 @@ MetaOverviewItem::itemPaint(QPainter *painter, const QStyleOptionGraphicsItem *,
 void
 EquipOverviewItem::itemPaint(QPainter* painter, const QStyleOptionGraphicsItem*, QWidget*) {
 
-        // mid is slightly higher to account for space around title, move mid up
-        static double mid = (ROWHEIGHT * 1.5f) + ((ROWHEIGHT * 3) / 2.0f);
+    // mid is slightly higher to account for space around title, move mid up
+    static double mid = ROWHEIGHT * 3.0f;
 
-        QString totalDistanceStr(QString::number(getTotalDistance(), 'f', 1));
-        QString units = GlobalContext::context()->useMetricUnits ? " m" : " mi";
+    static QColor outOfRangeColour = GColor(CHEARTRATE).darker(130);
+    static QColor inactiveColour = GColor(CCADENCE).darker(180);
+    static QColor activeColour = GColor(CCADENCE).lighter(110);
+    static QColor textColour = QColor(150, 150, 150);
 
-        // we align centre and mid
-        QFontMetrics fm(parent->bigfont);
-        QRectF rect = QFontMetrics(parent->bigfont, parent->device()).boundingRect(totalDistanceStr + units);
+    QString totalDistanceStr(QString::number(getTotalDistance(), 'f', 1));
+    QString units = GlobalContext::context()->useMetricUnits ? " m" : " mi";
 
-        painter->setFont(parent->bigfont);
+    // we align centre and mid
+    QFontMetrics fm(parent->bigfont);
+    QRectF rect = QFontMetrics(parent->bigfont, parent->device()).boundingRect(totalDistanceStr + units);
 
-        static QString date_format = "dd MMM yyyy";
+    // display the total distance in either normal or out of range colours
+    if (getTotalDistance() > repDistance_) {
+        painter->setPen(outOfRangeColour);
+    } else {
+        painter->setPen(GColor(CPLOTMARKER));
+    }
 
-        static QColor odtColour = GColor(CHEARTRATE).darker(130);
-        static QColor inactiveTimeColour = GColor(CCADENCE).darker(180);
-        static QColor timeColour = GColor(CCADENCE).lighter(110);
+    painter->setFont(parent->bigfont);
 
-        // overwrite the total distance in overdistance if it exceeds the replacement distance
-        if (getTotalDistance() > replacementDistance) {
-            painter->setPen(odtColour);
-        } else {
-            painter->setPen(GColor(CPLOTMARKER));
+    painter->drawText(QPointF((geometry().width() - rect.width()) / 2.0f,
+    mid + (fm.ascent() / 3.0f)), totalDistanceStr + units); // divided by 3 to account for "gap" at top of font
+
+    painter->setFont(parent->smallfont);
+
+    // display the date in either active, inactive or out of range colours
+    if (!rangeIsValid()) {
+        painter->setPen(outOfRangeColour);
+    }
+    else if (isWithin(QDate::currentDate())) {
+        painter->setPen(activeColour);
+    }
+    else {
+        painter->setPen(inactiveColour);
+    }
+
+    QString dateString;
+
+    // Format date field
+    if (!startSet_) {
+        if (!endSet_) {
+            dateString = "All Dates";
         }
-
-        painter->drawText(QPointF((geometry().width() - rect.width()) / 2.0f,
-        mid + (fm.ascent() / 3.0f)), totalDistanceStr + units); // divided by 3 to account for "gap" at top of font
-
-        painter->setPen(QColor(150, 150, 150));
-        painter->setFont(parent->smallfont);
-
-        // draw text and wrap / truncate to bounding rectangle
-        painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 5.0, geometry().width() - (ROWHEIGHT * 2),
-            geometry().height() - (ROWHEIGHT * 4)), QString("nonGCDistance: ") + QString::number(getNonGCDistance(), 'f', 1) + units);
-
-        painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 6.0, geometry().width() - (ROWHEIGHT * 2),
-            geometry().height() - (ROWHEIGHT * 4)), QString("gcDistance: ") + QString::number(getGCDistance(), 'f', 1) + units);
-
-        painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 7.0, geometry().width() - (ROWHEIGHT * 2),
-            geometry().height() - (ROWHEIGHT * 4)), QString("replacementDistance: ") + QString::number(replacementDistance, 'f', 1) + units);
-
-        // overwrite the date in either time color, inactive time or overdistance if range invalid
-        if (!rangeIsValid()) {
-            painter->setPen(odtColour);
+        else {
+            dateString = endDate_.toString("-->d MMM yyyy");
         }
-        else if (isWithin(QDate::currentDate())) {
-            painter->setPen(timeColour);
-        } else {
-            painter->setPen(inactiveTimeColour);
+    }
+    else {
+        if (!endSet_) {
+            dateString = startDate_.toString("d MMM yyyy -->");
         }
+        else {
+            dateString = (startDate_.toString("d MMM yyyy --> ") + endDate_.toString("d MMM yyyy"));
+        }
+    }
 
-        painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 8.0, geometry().width() - (ROWHEIGHT * 2),
-            geometry().height() - (ROWHEIGHT * 4)), QString("startDate: ") + startDate.toString(date_format));
+    painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 5.0, geometry().width() - (ROWHEIGHT * 2),
+        geometry().height() - (ROWHEIGHT * 4)), QString("In Use: ") + dateString);
 
-        painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 9.0, geometry().width() - (ROWHEIGHT * 2),
-            geometry().height() - (ROWHEIGHT * 4)), QString("endDate: ") + endDate.toString(date_format));
+    painter->setPen(textColour);
 
-        painter->setPen(QColor(150, 150, 150));
+    // draw text and wrap / truncate to bounding rectangle
+    painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 6.0, geometry().width() - (ROWHEIGHT * 2),
+        geometry().height() - (ROWHEIGHT * 4)), QString("non GC Distance: ") + QString::number(getNonGCDistance(), 'f', 1) + units);
 
-        painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 10.0, geometry().width() - (ROWHEIGHT * 2),
-            geometry().height() - (ROWHEIGHT * 4)), QString("Notes: ") + notes);
+    painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 7.0, geometry().width() - (ROWHEIGHT * 2),
+        geometry().height() - (ROWHEIGHT * 4)), QString("gc Distance: ") + QString::number(getGCDistance(), 'f', 1) + units);
+
+    painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 8.0, geometry().width() - (ROWHEIGHT * 2),
+        geometry().height() - (ROWHEIGHT * 4)), QString("replacement Distance: ") + QString::number(repDistance_, 'f', 1) + units);
+
+    painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 9.25, geometry().width() - (ROWHEIGHT * 2),
+        geometry().height() - (ROWHEIGHT * 4)), QString("Notes: ") + notes_);
 }
 
 void
@@ -3958,9 +3971,9 @@ OverviewItemConfig::OverviewItemConfig(ChartSpaceItem *item) : QWidget(NULL), it
         connect(endDate, SIGNAL(dateChanged(QDate)), this, SLOT(dataChanged()));
         layout->addRow(tr("End Date"), endDate);
 
-        replacementDistance = new QLineEdit(this);
-        connect(replacementDistance, SIGNAL(textChanged(QString)), this, SLOT(dataChanged()));
-        layout->addRow(tr("Replacement Distance"), replacementDistance);
+        replaceDistance = new QLineEdit(this);
+        connect(replaceDistance, SIGNAL(textChanged(QString)), this, SLOT(dataChanged()));
+        layout->addRow(tr("Replacement Distance"), replaceDistance);
 
         notes = new QPlainTextEdit();
         connect(notes, SIGNAL(textChanged()), this, SLOT(dataChanged()));
@@ -4249,12 +4262,15 @@ OverviewItemConfig::setWidgets()
         // set the widget with the class data
         EquipOverviewItem* mi = dynamic_cast<EquipOverviewItem*>(item);
         name->setText(mi->name);
-        nonGCDistance->setText(QString::number(mi->getNonGCDistance(), 'f', 2));
-        startSet->setChecked(mi->startSet);
-        startDate->setDate(mi->startDate);
-        endSet->setChecked(mi->endSet);
-        endDate->setDate(mi->endDate);
-        notes->setPlainText(mi->notes);
+        nonGCDistance->setText(QString::number(mi->getNonGCDistance(), 'f', 1));
+        replaceDistance->setText(QString::number(mi->repDistance_, 'f', 1));
+        startSet->setChecked(mi->startSet_);
+        startDate->setVisible(mi->startSet_); // show/hide date field
+        startDate->setDate(mi->startDate_);
+        endSet->setChecked(mi->endSet_);
+        endDate->setVisible(mi->endSet_); // show/hide date field
+        endDate->setDate(mi->endDate_);
+        notes->setPlainText(mi->notes_);
     }
     break;
 
@@ -4390,12 +4406,14 @@ OverviewItemConfig::dataChanged()
             EquipOverviewItem* mi = dynamic_cast<EquipOverviewItem*>(item);
             mi->name = name->text();
             mi->setNonGCDistance(nonGCDistance->text().toDouble());
-            mi->startSet = startSet->isChecked();
-            mi->startDate = startDate->date();
-            mi->endSet = endSet->isChecked();
-            mi->endDate = endDate->date();
-            mi->replacementDistance = replacementDistance->text().toDouble();
-            mi->notes = notes->toPlainText();
+            mi->startSet_ = startSet->isChecked();
+            startDate->setVisible(mi->startSet_); // show/hide date field
+            mi->startDate_ = startDate->date();
+            mi->endSet_ = endSet->isChecked();
+            endDate->setVisible(mi->endSet_); // show/hide date field
+            mi->endDate_ = endDate->date();
+            mi->repDistance_ = replaceDistance->text().toDouble();
+            mi->notes_ = notes->toPlainText();
             mi->bgcolor = bgcolor->getColor().name();
         }
         break;

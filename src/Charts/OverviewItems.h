@@ -112,7 +112,7 @@ class OverviewItemConfig : public QWidget
         MetricSelect *meta1; // Meta
         SeriesSelect *series1; // Zone Histogram
     
-        QLineEdit *description, *nonGCDistance, *replacementDistance;
+        QLineEdit *description, *nonGCDistance, *replaceDistance;
         QCheckBox *startSet, *endSet;
         QDateEdit *startDate, *endDate;
         QPlainTextEdit * notes;
@@ -391,7 +391,8 @@ class EquipOverviewItem : public ChartSpaceItem
     public:
 
         EquipOverviewItem(ChartSpace *parent,const QString& name,
-                        const double& nonGCDistance, const double& gcDistance, const double& totalDistance,
+                        const double& nonGCDistance, const double& gcDistance,
+                        const double& totalDistance, const double& repDistance,
                         bool startSet, const QDate& startDate, bool endSet, const QDate& endDate,
                         const QString& notes);
         ~EquipOverviewItem();
@@ -400,7 +401,7 @@ class EquipOverviewItem : public ChartSpaceItem
         void itemGeometryChanged() override;
 
         // The following don't apply to the Equipment Item.
-        void setData(RideItem*) override;
+        void setData(RideItem*) override {}
         void setDateRange(DateRange) override {}
 
         bool isWithin(const QDate& actDate) const;
@@ -417,15 +418,15 @@ class EquipOverviewItem : public ChartSpaceItem
 
         // create and config
         static ChartSpaceItem *create(ChartSpace *parent) {
-            return new EquipOverviewItem(parent, tr("Equipment Id"), 0.0, 0.0, 0.0, false, QDate(), false, QDate(), ""); }
+            return new EquipOverviewItem(parent, tr("Equipment Id"), 0.0, 0.0, 0.0, 0.0, false, QDate(), false, QDate(), ""); }
 
         void configChanged(qint32) override;
 
         // Primary state
-        double replacementDistance;
-        QDate startDate, endDate;
-        bool startSet, endSet;
-        QString notes;
+        double repDistance_;
+        QDate startDate_, endDate_;
+        bool startSet_, endSet_;
+        QString notes_;
 
     private:
         // Calculate state

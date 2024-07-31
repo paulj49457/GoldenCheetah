@@ -258,16 +258,21 @@ OverviewWindow::getConfiguration() const
             break;
         case OverviewItemType::EQUIP:
         {
-                // file export
+            // file export
             EquipOverviewItem* meta = reinterpret_cast<EquipOverviewItem*>(item);
             config += "\"nonGCDistance\":\"" + QString("%1").arg(meta->getNonGCDistance()) + "\",";
             config += "\"gcDistance\":\"" + QString("%1").arg(meta->getGCDistance()) + "\",";
             config += "\"totalDistance\":\"" + QString("%1").arg(meta->getTotalDistance()) + "\",";
-            config += "\"startSet\":\"" + QString("%1").arg(meta->startSet ? "1" : "0") + "\",";
-            config += "\"startDate\":\"" + QString("%1").arg(meta->startDate.toString()) + "\",";
-            config += "\"endSet\":\"" + QString("%1").arg(meta->endSet ? "1" : "0") + "\",";
-            config += "\"endDate\":\"" + QString("%1").arg(meta->endDate.toString()) + "\",";
-            config += "\"notes\":\"" + QString("%1").arg(meta->notes) + "\",";
+            config += "\"repDistance\":\"" + QString("%1").arg(meta->repDistance_) + "\",";
+            config += "\"startSet\":\"" + QString("%1").arg(meta->startSet_ ? "1" : "0") + "\",";
+            if (meta->startSet_) {
+                config += "\"startDate\":\"" + QString("%1").arg(meta->startDate_.toString()) + "\",";
+            }
+            config += "\"endSet\":\"" + QString("%1").arg(meta->endSet_ ? "1" : "0") + "\",";
+            if (meta->endSet_) {
+                config += "\"endDate\":\"" + QString("%1").arg(meta->endDate_.toString()) + "\",";
+            }
+            config += "\"notes\":\"" + QString("%1").arg(meta->notes_) + "\",";
         }
         break;
         case OverviewItemType::PMC:
@@ -499,19 +504,24 @@ badconfig:
 
         case OverviewItemType::EQUIP:
         {
-                // file import
+            // file import
             double nonGCDistance = obj["nonGCDistance"].toString().toDouble();
             double gcDistance = obj["gcDistance"].toString().toDouble();
             double totalDistance = obj["totalDistance"].toString().toDouble();
+            double repDistance = obj["repDistance"].toString().toDouble();
             bool startSet = (obj["startSet"].toString() == "1") ? true : false;
-            QDate startDate = QDate::fromString(obj["startDate"].toString());
+            QDate startDate;
+            if (startSet) {
+                startDate = QDate::fromString(obj["startDate"].toString());
+            }
             bool endSet = (obj["endSet"].toString() == "1") ? true : false;
-
-            add replacement distance here
-
-            QDate endDate = QDate::fromString(obj["endDate"].toString());
+            QDate endDate;
+            if (endSet) {
+                endDate = QDate::fromString(obj["endDate"].toString());
+            }
             QString notes = obj["notes"].toString();
-            add = new EquipOverviewItem(space, name, nonGCDistance, gcDistance, totalDistance, startSet, startDate, endSet, endDate, notes);
+            add = new EquipOverviewItem(space, name, nonGCDistance, gcDistance, totalDistance, repDistance,
+                                        startSet, startDate, endSet, endDate, notes);
             add->datafilter = datafilter;
             space->addItem(order, column, span, deep, add);
         }
