@@ -395,14 +395,15 @@ class EquipOverviewItem : public ChartSpaceItem
                         const double& totalDistance, const double& repDistance,
                         bool startSet, const QDate& startDate, bool endSet, const QDate& endDate,
                         const QString& notes);
-        ~EquipOverviewItem();
+        ~EquipOverviewItem() {}
 
         void itemPaint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) override;
-        void itemGeometryChanged() override;
 
         // The following don't apply to the Equipment Item.
         void setData(RideItem*) override {}
         void setDateRange(DateRange) override {}
+        void itemGeometryChanged() override {}
+        void configChanged(qint32) override {}
 
         bool isWithin(const QDate& actDate) const;
         bool rangeIsValid() const;
@@ -418,18 +419,16 @@ class EquipOverviewItem : public ChartSpaceItem
 
         // create and config
         static ChartSpaceItem *create(ChartSpace *parent) {
-            return new EquipOverviewItem(parent, tr("Equipment Id"), 0.0, 0.0, 0.0, 0.0, false, QDate(), false, QDate(), ""); }
+            return new EquipOverviewItem(parent, tr("Equipment Id"), 0.0, 0.0, 0.0, 0.0,
+                                          false, QDate(), false, QDate(), ""); }
 
-        void configChanged(qint32) override;
-
-        // Primary state
         double repDistance_;
         QDate startDate_, endDate_;
         bool startSet_, endSet_;
         QString notes_;
 
     private:
-        // Calculate state
+        // Must not be directly updated
         double nonGCDistance_;
         std::atomic<double> gcDistance_;
         std::atomic<double> totalDistance_;

@@ -954,15 +954,6 @@ EquipOverviewItem::EquipOverviewItem(ChartSpace* parent, const QString& name,
     configChanged(0);
 }
 
-void
-EquipOverviewItem::configChanged(qint32)
-{
-}
-
-EquipOverviewItem::~EquipOverviewItem()
-{
-}
-
 IntervalOverviewItem::IntervalOverviewItem(ChartSpace *parent, QString name, QString xsymbol, QString ysymbol, QString zsymbol) : ChartSpaceItem(parent, name)
 {
     if (parent->scope == OverviewScope::ANALYSIS) this->type = OverviewItemType::INTERVAL;
@@ -2683,10 +2674,6 @@ MetaOverviewItem::itemGeometryChanged() {
             sparkline->hide();
         }
     }
-}
-
-void
-EquipOverviewItem::itemGeometryChanged() {
 }
 
 void

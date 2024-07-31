@@ -876,9 +876,7 @@ EquipCalculator::threadCompleted(EquipCalculationThread* thread)
 
     if (recalculationThreads_.count() == 0) {
 
-       // ptj equipeqCalc_->rootItem_->setLastRecalc(QDateTime::currentDateTime());
-
-        printf("EquipCalculator::threadCompleted - finished\n");
+        // finished recalculation
     }
 }
 
@@ -886,8 +884,6 @@ void
 EquipCalculator::RecalculateEq(RideItem* rideItem)
 {
     if (rideItem->getText("EquipmentLink", "abcde") == eqLinkName_) {
-
-        printf("EquipCalculator::RecalculateEq - matched ride\n");
 
         QDate actDate(QDate(1900, 01, 01).addDays(rideItem->getText("Start Date", "0").toInt()));
 
@@ -898,9 +894,6 @@ EquipCalculator::RecalculateEq(RideItem* rideItem)
 
             if (static_cast<EquipOverviewItem*>(eqTile)->isWithin(actDate)) {
 
-                printf("EquipCalculator::RecalculateEq - matched time\n");
-
-               // ptj tiles_->incrementActivities();
                 static_cast<EquipOverviewItem*>(eqTile)->incrementDistanceCovered(dist);
             }
         }
