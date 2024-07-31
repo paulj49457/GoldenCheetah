@@ -1671,7 +1671,7 @@ KeywordDefinition::fingerprint(QList<KeywordDefinition> list)
  *--------------------------------------------------------------------*/
 
 void
-RideMetadata::serialize(const QString& filename, const QList<KeywordDefinition>& keywordDefinitions, const QList<FieldDefinition>& fieldDefinitions, const QString& colorfield, const QList<DefaultDefinition>& defaultDefinitions)
+RideMetadata::serialize(QString filename, QList<KeywordDefinition>keywordDefinitions, QList<FieldDefinition>fieldDefinitions, QString colorfield, QList<DefaultDefinition>defaultDefinitions)
 {
     // open file - truncate contents
     QFile file(filename);
