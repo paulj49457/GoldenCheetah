@@ -1241,7 +1241,7 @@ ChartSpace::eventFilter(QObject *, QEvent *event)
             int setdeep = stateData.yresize.deep + addrows;
 
             //min height
-            if (setdeep < 5) setdeep=5; // min of 5 rows
+            if (setdeep < 5) setdeep=5; // min of 5 rows -- ptj
 
             stateData.yresize.item->deep = setdeep;
 

@@ -3649,21 +3649,22 @@ MetaOverviewItem::itemPaint(QPainter *painter, const QStyleOptionGraphicsItem *,
 }
 
 void
-EquipOverviewItem::itemPaint(QPainter* painter, const QStyleOptionGraphicsItem*, QWidget*) {
+EquipOverviewItem::configChanged(qint32 cfg) {
 
+    if ((cfg == 0) || (cfg & CONFIG_APPEARANCE)) {
+        inactiveColour = (GCColor::luminance(RGBColor(color())) < 127) ? QColor(QColor(100, 100, 100)) : QColor(QColor(170, 170, 170));
+        textColour = (GCColor::luminance(RGBColor(color())) < 127) ? QColor(QColor(200, 200, 200)) : QColor(QColor(70, 70, 70));
+        outOfRangeColour = GColor(CHEARTRATE).darker(130);  // red
+    }
+}
+
+void
+EquipOverviewItem::itemPaint(QPainter* painter, const QStyleOptionGraphicsItem*, QWidget*) {
+    
     // mid is slightly higher to account for space around title, move mid up
     static double mid = ROWHEIGHT * 3.0f;
 
-    static QColor outOfRangeColour = GColor(CHEARTRATE).darker(130);  // red
-    static QColor inactiveColour = QColor(150, 150, 150);
-
     QString totalDistanceStr(QString::number(getTotalDistance(), 'f', 1));
-    QString units = GlobalContext::context()->useMetricUnits ? " m" : " mi";
-
-    // we align centre and mid
-    QFontMetrics fm(parent->bigfont);
-    QRectF rect = QFontMetrics(parent->bigfont, parent->device()).boundingRect(totalDistanceStr + units);
-
 
     QColor activeDateColor;
     if (isWithin(QDate::currentDate())) {
@@ -3675,18 +3676,29 @@ EquipOverviewItem::itemPaint(QPainter* painter, const QStyleOptionGraphicsItem*,
     bool overDistance((repDistance_ > 0.0f) && (getTotalDistance() >= repDistance_));
 
     // display the total distance in either active, inactive or out of range colours
-    if (overDistance) {
+    if (overDistance || !rangeIsValid()) {
         painter->setPen(outOfRangeColour);
     } else {
         painter->setPen(activeDateColor);
     }
 
+    // we align centre and mid
+    QFontMetrics fm(parent->bigfont);
+    QRectF rect = QFontMetrics(parent->bigfont, parent->device()).boundingRect(totalDistanceStr);
     painter->setFont(parent->bigfont);
 
     painter->drawText(QPointF((geometry().width() - rect.width()) / 2.0f,
-    mid + (fm.ascent() / 3.0f)), totalDistanceStr + units); // divided by 3 to account for "gap" at top of font
+                        mid + (fm.ascent() / 3.0f)), totalDistanceStr); // divided by 3 to account for "gap" at top of font
 
+    double addy = QFontMetrics(parent->smallfont).height();
+
+    painter->setPen(QColor(100, 100, 100));
     painter->setFont(parent->smallfont);
+
+    QString units = GlobalContext::context()->useMetricUnits ? "metres" : "miles";
+
+    painter->drawText(QPointF((geometry().width() - QFontMetrics(parent->smallfont).horizontalAdvance(units)) / 2.0f,
+        mid + (fm.ascent() / 3.0f) + addy), units); // divided by 3 to account for "gap" at top of font
 
     // display the date in either active, inactive or out of range colours
     if (!rangeIsValid()) {
@@ -3712,27 +3724,33 @@ EquipOverviewItem::itemPaint(QPainter* painter, const QStyleOptionGraphicsItem*,
         }
     }
 
-    painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 5.0, geometry().width() - (ROWHEIGHT * 2),
+    double rowPosn(ROWHEIGHT*5.5);
+
+    painter->drawText(QRectF(ROWHEIGHT, rowPosn, geometry().width() - (ROWHEIGHT * 2),
         geometry().height() - (ROWHEIGHT * 4)), dateString);
 
-    painter->setPen(inactiveColour);
+    painter->setPen(textColour);
 
-    // draw text and wrap / truncate to bounding rectangle
-    painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 6.0, geometry().width() - (ROWHEIGHT * 2),
-        geometry().height() - (ROWHEIGHT * 4)), QString("non GC Distance: ") + QString::number(getNonGCDistance(), 'f', 1) + units);
+    rowPosn += (ROWHEIGHT * 1.0);
+    painter->drawText(QRectF(ROWHEIGHT, rowPosn, geometry().width() - (ROWHEIGHT * 2),
+        geometry().height() - (ROWHEIGHT * 4)), QString("Manual dst: ") + QString::number(getNonGCDistance(), 'f', 1) + units);
 
-    painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 7.0, geometry().width() - (ROWHEIGHT * 2),
-        geometry().height() - (ROWHEIGHT * 4)), QString("gc Distance: ") + QString::number(getGCDistance(), 'f', 1) + units);
+    rowPosn += ROWHEIGHT;
+    painter->drawText(QRectF(ROWHEIGHT, rowPosn, geometry().width() - (ROWHEIGHT * 2),
+        geometry().height() - (ROWHEIGHT * 4)), QString("GC Activities: ") + QString::number(getGCDistance(), 'f', 1) + units);
+    
 
     if (overDistance) painter->setPen(outOfRangeColour);
 
-    painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 8.0, geometry().width() - (ROWHEIGHT * 2),
-        geometry().height() - (ROWHEIGHT * 4)), QString("replacement Distance: ") + QString::number(repDistance_, 'f', 1) + units);
+    rowPosn += ROWHEIGHT;
+    painter->drawText(QRectF(ROWHEIGHT, rowPosn, geometry().width() - (ROWHEIGHT * 2),
+        geometry().height() - (ROWHEIGHT * 4)), QString("Replacement dst: ") + QString::number(repDistance_, 'f', 1) + units);
+ 
+    painter->setPen(textColour);
 
-    painter->setPen(inactiveColour);
-
-    painter->drawText(QRectF(ROWHEIGHT, ROWHEIGHT * 9.25, geometry().width() - (ROWHEIGHT * 2),
-        geometry().height() - (ROWHEIGHT * 4)), QString("Notes: ") + notes_);
+    rowPosn += (ROWHEIGHT*1.25);
+    painter->drawText(QRectF(ROWHEIGHT, rowPosn, geometry().width() - (ROWHEIGHT * 2),
+        geometry().height() - (ROWHEIGHT * 4)), notes_);
 }
 
 void
@@ -3943,7 +3961,7 @@ OverviewItemConfig::OverviewItemConfig(ChartSpaceItem *item) : QWidget(NULL), it
 
         nonGCDistance = new QLineEdit(this);
         connect(nonGCDistance, SIGNAL(textChanged(QString)), this, SLOT(dataChanged()));
-        layout->addRow(tr("Non GC Distance"), nonGCDistance);
+        layout->addRow(tr("Manual dst"), nonGCDistance);
 
         QHBoxLayout* startRow = new QHBoxLayout(this);
         startSet = new QCheckBox(this);
@@ -3969,7 +3987,7 @@ OverviewItemConfig::OverviewItemConfig(ChartSpaceItem *item) : QWidget(NULL), it
 
         replaceDistance = new QLineEdit(this);
         connect(replaceDistance, SIGNAL(textChanged(QString)), this, SLOT(dataChanged()));
-        layout->addRow(tr("Replacement Distance"), replaceDistance);
+        layout->addRow(tr("Replacement dst"), replaceDistance);
 
         notes = new QPlainTextEdit();
         connect(notes, SIGNAL(textChanged()), this, SLOT(dataChanged()));

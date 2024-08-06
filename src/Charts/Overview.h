@@ -33,6 +33,7 @@
 
 #include "ChartSpace.h"
 #include "OverviewItems.h"
+#include "EquipCalculator.h"
 
 class OverviewWindow : public GcChartWindow
 {
@@ -58,13 +59,13 @@ class OverviewWindow : public GcChartWindow
         void setMinimumColumns(int x) { if (x>0 && x< 11) {mincolsEdit->setValue(x); space->setMinimumColumns(x); }}
 
         // add a tile to the window
-        void addTile();
+        virtual void addTile();
         void importChart();
         void settings();
         virtual void calculate() {}
 
         // config item requested
-        void configItem(ChartSpaceItem *);
+        virtual void configItem(ChartSpaceItem *);
 
     protected:
         ChartSpace* space;
@@ -100,59 +101,24 @@ class OverviewConfigDialog : public QDialog
         QPushButton *remove, *ok, *exp;
 };
 
-class EquipCalculator;
-
-class EquipCalculationThread : public QThread
-{
-    public:
-        EquipCalculationThread(EquipCalculator* eqCalc) : eqCalc_(eqCalc) {}
-
-    protected:
-
-        // recalculate distances
-        virtual void run() override;
-
-    private:
-        EquipCalculator* eqCalc_;
-};
-
-class EquipCalculator
-{
-    public:
-        EquipCalculator(Context* context);
-        virtual ~EquipCalculator();
-
-        void eqRecalculationStart(const QString& eqLink, ChartSpace* space);
-
-    protected:
-
-        friend class ::EquipCalculationThread;
-
-        // distance calculation
-        void RecalculateEq(RideItem* rideItem);
-        RideItem* nextRideToCheck();
-        void threadCompleted(EquipCalculationThread* thread);
-
-        // Equipment distance recalculation
-        QMutex updateMutex_;
-        QVector<EquipCalculationThread*> recalculationThreads_;
-        QVector<RideItem*>  rideItemList_;
-
-        QString eqLinkName_;
-        QList<ChartSpaceItem*> eqTiles_;
-        Context* context_;
-
-};
-
 class EquipOverviewWindow : public OverviewWindow
 {
+    Q_OBJECT
+
     public:
 
         EquipOverviewWindow(Context* context, int scope = OverviewScope::EQUIPMENT, bool blank = false);
 
         virtual ~EquipOverviewWindow();
 
-        virtual void calculate() override;
+        void calculate();
+
+    public slots:
+
+        virtual void addTile();
+        virtual void configItem(ChartSpaceItem*);
+
+        void configChanged(qint32 cfg);
 
     protected:
         EquipCalculator* eqCalc;

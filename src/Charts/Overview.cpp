@@ -42,11 +42,12 @@ OverviewWindow::OverviewWindow(Context *context, int scope, bool blank) : GcChar
     QAction *settings= new QAction(tr("Settings..."));
     addAction(settings);
 
-    if (scope & OverviewScope::EQUIPMENT) {
-        QAction* calc = new QAction(tr("Calc..."));
-        addAction(calc);
-        connect(calc, SIGNAL(triggered(bool)), this, SLOT(calculate()));
-    }
+    // ptj
+    //if (scope & OverviewScope::EQUIPMENT) {
+    //    QAction* calc = new QAction(tr("Calc..."));
+    //    addAction(calc);
+    //    connect(calc, SIGNAL(triggered(bool)), this, SLOT(calculate()));
+    //}
 
     // settings
     QWidget *controls=new QWidget(this);
@@ -503,29 +504,29 @@ badconfig:
             break;
 
         case OverviewItemType::EQUIP:
-        {
-            // file import
-            double nonGCDistance = obj["nonGCDistance"].toString().toDouble();
-            double gcDistance = obj["gcDistance"].toString().toDouble();
-            double totalDistance = obj["totalDistance"].toString().toDouble();
-            double repDistance = obj["repDistance"].toString().toDouble();
-            bool startSet = (obj["startSet"].toString() == "1") ? true : false;
-            QDate startDate;
-            if (startSet) {
-                startDate = QDate::fromString(obj["startDate"].toString());
+            {
+                // file import
+                double nonGCDistance = obj["nonGCDistance"].toString().toDouble();
+                double gcDistance = obj["gcDistance"].toString().toDouble();
+                double totalDistance = obj["totalDistance"].toString().toDouble();
+                double repDistance = obj["repDistance"].toString().toDouble();
+                bool startSet = (obj["startSet"].toString() == "1") ? true : false;
+                QDate startDate;
+                if (startSet) {
+                    startDate = QDate::fromString(obj["startDate"].toString());
+                }
+                bool endSet = (obj["endSet"].toString() == "1") ? true : false;
+                QDate endDate;
+                if (endSet) {
+                    endDate = QDate::fromString(obj["endDate"].toString());
+                }
+                QString notes = obj["notes"].toString();
+                add = new EquipOverviewItem(space, name, nonGCDistance, gcDistance, totalDistance, repDistance,
+                                            startSet, startDate, endSet, endDate, notes);
+                add->datafilter = datafilter;
+                space->addItem(order, column, span, deep, add);
             }
-            bool endSet = (obj["endSet"].toString() == "1") ? true : false;
-            QDate endDate;
-            if (endSet) {
-                endDate = QDate::fromString(obj["endDate"].toString());
-            }
-            QString notes = obj["notes"].toString();
-            add = new EquipOverviewItem(space, name, nonGCDistance, gcDistance, totalDistance, repDistance,
-                                        startSet, startDate, endSet, endDate, notes);
-            add->datafilter = datafilter;
-            space->addItem(order, column, span, deep, add);
-        }
-        break;
+            break;
 
         case OverviewItemType::PMC :
             {
@@ -791,119 +792,19 @@ OverviewConfigDialog::exportChart()
 
 }
 
-// ---------------------------- EquipCalculator -----------------------------------
-
-EquipCalculator::EquipCalculator(Context* context) : context_(context)
-{
-}
-
-EquipCalculator::~EquipCalculator()
-{
-}
-
-void
-EquipCalculator::eqRecalculationStart(const QString& eqLinkName, ChartSpace* space)
-{
-    // already recalcuating !
-    if (recalculationThreads_.count()) return;
-
-    eqTiles_ = space->allItems();
-    eqLinkName_ = eqLinkName;
-
-    // Reset all the tiles distances
-    for (ChartSpaceItem* eqTile : eqTiles_) {
-        static_cast<EquipOverviewItem*>(eqTile)->resetDistanceCovered();
-    }
-
-    // update the last recalcuation time & units used
-    //equipeqCalc_->rootItem_->setMetricUnits(GlobalContext::context()->useMetricUnits);
-
-    // Currently this code restricts the calculation to a single athlete, so possibly needs looking
-    // at to provide a general calcluation of distances of equipment used by all athletes.
-
-    // take a copy of the rides through the athlete's rides creating a ride List to process
-    rideItemList_ = context_->athlete->rideCache->rides();
-
-    // calculate number of threads and work per thread
-    int maxthreads = QThreadPool::globalInstance()->maxThreadCount();
-    int threads = maxthreads / 4; // Don't need many threads
-    if (threads == 0) threads = 1; // but need at least one!
-
-    // keep launching the threads
-    while (threads--) {
-
-        // if goes past last make it the last
-        EquipCalculationThread* thread = new EquipCalculationThread(this);
-        recalculationThreads_ << thread;
-
-        thread->start();
-    }
-}
-
-RideItem*
-EquipCalculator::nextRideToCheck()
-{
-    RideItem* returning;
-    updateMutex_.lock();
-
-    if (rideItemList_.isEmpty()) {
-        returning = nullptr;
-    }
-    else {
-        returning = rideItemList_.takeLast();
-    }
-    updateMutex_.unlock();
-    return(returning);
-}
-
-void
-EquipCalculationThread::run() {
-
-    RideItem* item;
-    while (item = eqCalc_->nextRideToCheck()) {
-        eqCalc_->RecalculateEq(item);
-    }
-    eqCalc_->threadCompleted(this);
-    return;
-}
-
-void
-EquipCalculator::threadCompleted(EquipCalculationThread* thread)
-{
-    updateMutex_.lock();
-    recalculationThreads_.removeOne(thread);
-    updateMutex_.unlock();
-
-    if (recalculationThreads_.count() == 0) {
-
-        // finished recalculation
-    }
-}
-
-void
-EquipCalculator::RecalculateEq(RideItem* rideItem)
-{
-    if (rideItem->getText("EquipmentLink", "abcde") == eqLinkName_) {
-
-        QDate actDate(QDate(1900, 01, 01).addDays(rideItem->getText("Start Date", "0").toInt()));
-
-        // get the distance metric
-        double dist = rideItem->getStringForSymbol("total_distance", GlobalContext::context()->useMetricUnits).toDouble();
-
-        for (ChartSpaceItem* eqTile : eqTiles_) {
-
-            if (static_cast<EquipOverviewItem*>(eqTile)->isWithin(actDate)) {
-
-                static_cast<EquipOverviewItem*>(eqTile)->incrementDistanceCovered(dist);
-            }
-        }
-    }
-}
-
 EquipOverviewWindow::EquipOverviewWindow(Context* context, int scope, bool blank) :
     OverviewWindow(context, scope, blank)
 {
     eqCalc = new EquipCalculator(context);
+
+    connect(context, SIGNAL(configChanged(qint32)), this, SLOT(configChanged(qint32)));
+
+    // Equipment Tile recalculation cases
+    connect(context, SIGNAL(refreshEnd(void)), this, SLOT(calculate(void)));
+    connect(context, SIGNAL(rideAdded(RideItem*)), this, SLOT(calculate(void)));
+    connect(context, SIGNAL(rideDeleted(RideItem*)), this, SLOT(calculate(void)));
+    connect(context, SIGNAL(rideChanged(RideItem*)), this, SLOT(calculate(void)));
+
 }
 
 EquipOverviewWindow::~EquipOverviewWindow()
@@ -911,9 +812,33 @@ EquipOverviewWindow::~EquipOverviewWindow()
     delete eqCalc;
 }
 
-void EquipOverviewWindow::calculate()
+void
+EquipOverviewWindow::addTile()
 {
-    eqCalc->eqRecalculationStart(title(), space);
+    OverviewWindow::addTile();
 
+    // ptj should just recompute a tile
+    calculate();
 }
 
+void
+EquipOverviewWindow::configItem(ChartSpaceItem* item)
+{
+    OverviewWindow::configItem(item);
+
+    // ptj should just recompute a tile
+    calculate();
+}
+
+void
+EquipOverviewWindow::configChanged(qint32 cfg) {
+
+    // Update in case the metric/imperial units have changed
+    if (cfg & CONFIG_UNITS) calculate();
+}
+
+void
+EquipOverviewWindow::calculate()
+{
+    eqCalc->RecalculateEquipSpace(title(), space);
+}

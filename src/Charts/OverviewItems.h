@@ -398,12 +398,12 @@ class EquipOverviewItem : public ChartSpaceItem
         ~EquipOverviewItem() {}
 
         void itemPaint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) override;
+        void configChanged(qint32) override;
 
         // The following don't apply to the Equipment Item.
         void setData(RideItem*) override {}
         void setDateRange(DateRange) override {}
         void itemGeometryChanged() override {}
-        void configChanged(qint32) override {}
 
         bool isWithin(const QDate& actDate) const;
         bool rangeIsValid() const;
@@ -433,6 +433,7 @@ class EquipOverviewItem : public ChartSpaceItem
         std::atomic<double> gcDistance_;
         std::atomic<double> totalDistance_;
 
+        QColor inactiveColour, textColour, outOfRangeColour;
         OverviewItemConfig *configwidget;
 };
 
