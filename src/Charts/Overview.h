@@ -62,7 +62,6 @@ class OverviewWindow : public GcChartWindow
         virtual void addTile();
         void importChart();
         void settings();
-        virtual void calculate() {}
 
         // config item requested
         virtual void configItem(ChartSpaceItem *);
@@ -111,7 +110,7 @@ class EquipOverviewWindow : public OverviewWindow
 
         virtual ~EquipOverviewWindow();
 
-        void calculate();
+
 
     public slots:
 
@@ -120,8 +119,10 @@ class EquipOverviewWindow : public OverviewWindow
 
         void configChanged(qint32 cfg);
 
-    protected:
+    private:
         EquipCalculator* eqCalc;
+
+        void calculate();
 };
 
 #endif // _GC_OverviewWindow_h

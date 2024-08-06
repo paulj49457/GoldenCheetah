@@ -3880,7 +3880,6 @@ static bool insensitiveLessThan(const QString &a, const QString &b)
 {
     return a.toLower() < b.toLower();
 }
-
 OverviewItemConfig::OverviewItemConfig(ChartSpaceItem *item) : QWidget(NULL), item(item), block(false)
 {
     QVBoxLayout *main = new QVBoxLayout(this);
