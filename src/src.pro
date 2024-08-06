@@ -627,7 +627,7 @@ HEADERS += Charts/Aerolab.h Charts/AerolabWindow.h Charts/AllPlot.h Charts/AllPl
            Charts/MetadataWindow.h Charts/MUPlot.h Charts/MUPool.h Charts/MUWidget.h Charts/PfPvPlot.h Charts/PfPvWindow.h \
            Charts/PowerHist.h Charts/ReferenceLineDialog.h Charts/RideEditor.h Charts/RideMapWindow.h \
            Charts/ScatterPlot.h Charts/ScatterWindow.h Charts/SmallPlot.h Charts/TreeMapPlot.h \
-           Charts/TreeMapWindow.h Charts/ZoneScaleDraw.h
+           Charts/TreeMapWindow.h Charts/ZoneScaleDraw.h Charts/EquipCalculator.h
 
 # cloud services
 HEADERS += Cloud/CalendarDownload.h Cloud/CloudService.h \
