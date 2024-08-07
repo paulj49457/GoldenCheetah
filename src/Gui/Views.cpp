@@ -64,8 +64,6 @@ AnalysisView::~AnalysisView()
     appsettings->setValue(GC_SETTINGS_MAIN_SIDEBAR "analysis", _sidebar);
     delete analSidebar;
     //delete hw; tabview deletes after save state
-
-    saveState(); // writes analysis-perspectives.xml
 }
 
 void
@@ -102,77 +100,6 @@ AnalysisView::setRide(RideItem *ride)
 
     // tell the perspective we have selected a ride
     page()->setProperty("ride", QVariant::fromValue<RideItem*>(dynamic_cast<RideItem*>(ride)));
-}
-
-void
-AnalysisView::restoreState(bool useDefault)
-{
-    AbstractView::restoreState(useDefault);
-
-    // analysis view then lets select the first ride now
-    // used to happen in Tab.cpp on create, but we do it later now
-    QDateTime now = QDateTime::currentDateTime();
-    for (int i = context->athlete->rideCache->rides().count(); i > 0; --i) {
-        if (context->athlete->rideCache->rides()[i - 1]->dateTime <= now) {
-            context->athlete->selectRideFile(context->athlete->rideCache->rides()[i - 1]->fileName);
-            break;
-        }
-    }
-
-    // otherwise just the latest
-    if (context->currentRideItem() == NULL && context->athlete->rideCache->rides().count() != 0) {
-        context->athlete->selectRideFile(context->athlete->rideCache->rides().last()->fileName);
-    }
-}
-
-void
-AnalysisView::splitterMoved(int pos, int)
-{
-    AbstractView::splitterMoved(pos, 0);
-
-    // if user moved us then tell ride navigator if
-    // we are the analysis view
-    // all a bit of a hack to stop the column widths from
-    // being adjusted as the splitter gets resized and reset
-    if (active == false && context->rideNavigator->geometry().width() != 100)
-        context->rideNavigator->setWidth(context->rideNavigator->geometry().width());
-}
-
-void
-AnalysisView::sidebarChanged()
-{
-    // wait for main window to catch up
-    if (sidebar_ == NULL) return;
-
-    AbstractView::sidebarChanged();
-
-    if (sidebarEnabled()) {
-
-        // if user moved us then tell ride navigator if
-        // we are the analysis view
-        // all a bit of a hack to stop the column widths from
-        // being adjusted as the splitter gets resized and reset
-        if (context->mainWindow->init && context->tab->init && active == false && context->rideNavigator->geometry().width() != 100)
-            context->rideNavigator->setWidth(context->rideNavigator->geometry().width());
-        setUpdatesEnabled(true);
-
-    }
-}
-
-void
-AnalysisView::setPerspectives(QComboBox* perspectiveSelector, bool selectChart = false)
-{
-    AbstractView::setPerspectives(perspectiveSelector, selectChart);
-
-    if (loaded) {
-        // On analysis view the perspective is selected on the basis
-        // of the currently selected ride
-        RideItem* notconst = (RideItem*)context->currentRideItem();
-        if (notconst != NULL) setRide(notconst);
-
-        // due to visibility optimisation we need to force the first tab to be selected in tab mode
-        if (perspective_->currentStyle == 0 && perspective_->charts.count()) perspective_->tabSelected(0);
-    }
 }
 
 void
@@ -226,8 +153,6 @@ DiaryView::~DiaryView()
     appsettings->setValue(GC_SETTINGS_MAIN_SIDEBAR "diary", _sidebar);
     delete diarySidebar;
     //delete hw; tabview deletes after save state
-
-    saveState(); // writes diary-perspectives.xml
 }
 
 void
@@ -283,8 +208,6 @@ TrendsView::~TrendsView()
     appsettings->setValue(GC_SETTINGS_MAIN_SIDEBAR "trend", _sidebar);
     delete sidebar;
     //delete hw; tabview deletes after save state
-
-    saveState(); // writes home-perspectives.xml
 }
 
 void
@@ -400,27 +323,12 @@ TrainView::~TrainView()
     appsettings->setValue(GC_SETTINGS_MAIN_SIDEBAR "train", _sidebar);
     delete trainTool;
     //delete hw; tabview deletes after save state
-
-    saveState(); // writes train-perspectives.xml
 }
 
 void
 TrainView::close()
 {
     trainTool->Stop();
-}
-
-Perspective*
-TrainView::addPerspective(QString name)
-{
-    Perspective* page = new Perspective(context, name, type);
-
-    // no tabs on train view
-    page->styleChanged(2);
-
-    // append
-    appendPerspective(page);
-    return page;
 }
 
 bool
@@ -459,13 +367,6 @@ EquipView::EquipView(Context* context, QStackedWidget* controls) :
 
 EquipView::~EquipView()
 {
-    saveState(); // writes equipment-perspectives.xml
-}
-
-void
-EquipView::restoreState(bool useDefault)
-{
-    AbstractView::restoreState(useDefault);
 }
 
 bool
