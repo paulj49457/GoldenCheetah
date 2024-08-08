@@ -96,6 +96,7 @@ class MainWindow : public QMainWindow
         // currently selected tab
         AthleteTab *athleteTab() { return currentAthleteTab; }
         NewSideBar *newSidebar() { return sidebar; }
+        EquipView* equipView;
 
         // tab view keeps this up to date
         QAction *showhideSidebar;
@@ -309,7 +310,6 @@ class MainWindow : public QMainWindow
         // when loading athlete
         NewSideBar *sidebar;
         AthleteView *athleteView;
-        EquipView* equipView;
 
 #ifndef Q_OS_MAC
         QTFullScreen *fullScreen;

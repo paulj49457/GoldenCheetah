@@ -806,7 +806,6 @@ EquipOverviewWindow::EquipOverviewWindow(Context* context, int scope, bool blank
     connect(context, SIGNAL(rideAdded(RideItem*)), this, SLOT(calculate(void)));
     connect(context, SIGNAL(rideDeleted(RideItem*)), this, SLOT(calculate(void)));
     connect(context, SIGNAL(rideChanged(RideItem*)), this, SLOT(calculate(void)));
-
 }
 
 EquipOverviewWindow::~EquipOverviewWindow()

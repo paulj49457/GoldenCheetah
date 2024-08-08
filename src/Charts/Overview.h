@@ -114,8 +114,8 @@ class EquipOverviewWindow : public OverviewWindow
 
     public slots:
 
-        virtual void addTile();
-        virtual void configItem(ChartSpaceItem*);
+        virtual void addTile() override;
+        virtual void configItem(ChartSpaceItem*) override;
 
         void configChanged(qint32 cfg);
 

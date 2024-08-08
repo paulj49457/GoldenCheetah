@@ -997,6 +997,7 @@ bool ViewParser::startElement( const QString&, const QString&, const QString &na
 
         // new chart
         type = static_cast<GcWinID>(typeStr.toInt());
+        printf("ViewParser - %d create\n", type);
         chart = GcWindowRegistry::newGcWindow(type, context);
         if (chart != NULL) {
             chart->hide();

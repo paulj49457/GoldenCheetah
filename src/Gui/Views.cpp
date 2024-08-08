@@ -65,7 +65,6 @@ AnalysisView::~AnalysisView()
     delete analSidebar;
     //delete hw; tabview deletes after save state
 
-    // ptj saveState(); // writes analysis-perspectives.xml
 }
 
 void
@@ -156,7 +155,6 @@ DiaryView::~DiaryView()
     delete diarySidebar;
     //delete hw; tabview deletes after save state
 
-    // ptj saveState(); // writes diary-perspectives.xml
 }
 
 void
@@ -213,7 +211,6 @@ TrendsView::~TrendsView()
     delete sidebar;
     //delete hw; tabview deletes after save state
 
-    // ptj saveState(); // writes home-perspectives.xml
 }
 
 void
@@ -330,7 +327,6 @@ TrainView::~TrainView()
     delete trainTool;
     //delete hw; tabview deletes after save state
 
-    // ptj saveState(); // writes train-perspectives.xml
 }
 
 void
@@ -367,12 +363,18 @@ EquipView::EquipView(Context* context, QStackedWidget* controls) :
     pstack = new QStackedWidget(this);
     setPages(pstack);
 
+    setSidebarEnabled(false);
+
     // each perspective has a stack of controls
     cstack = new QStackedWidget(this);
     controls->addWidget(cstack);
     controls->setCurrentIndex(0);
 
-    setSidebarEnabled(false);
+    // the dialog box for the chart settings
+    chartsettings = new ChartSettings(this, controls);
+    chartsettings->setFixedWidth(650);
+    chartsettings->setFixedHeight(600);
+    chartsettings->hide();
 }
 
 EquipView::~EquipView()
