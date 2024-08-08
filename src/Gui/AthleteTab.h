@@ -105,7 +105,6 @@ class AthleteTab: public QWidget
         TrendsView *homeView;
         TrainView *trainView;
         DiaryView *diaryView;
-        static EquipView* equipView; // There is only one shared equipment view
 
         // Chart Settings Dialog
         ChartSettings *chartSettings;
@@ -115,7 +114,6 @@ class AthleteTab: public QWidget
                        *diaryControls,
                        *homeControls,
                        *intervalControls;
-        static QStackedWidget *equipControls; // There is only one shared equipment view
 
 };
 

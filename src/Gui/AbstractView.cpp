@@ -84,8 +84,6 @@ AbstractView::AbstractView(Context* context, int type, const QString& view, cons
 
 AbstractView::~AbstractView()
 {
-    saveState(); // writes xxx-perspectives.xml
-
     foreach(Perspective *p, perspectives_) delete p;
     perspectives_.clear();
 }
@@ -265,8 +263,15 @@ AbstractView::saveState()
     // we do not save all the other Qt properties since
     // we're not interested in them
     // NOTE: currently we support QString, int, double and bool types - beware custom types!!
+    QString filename;
+    if (type == VIEW_EQUIPMENT) {
+        filename = QDir(gcroot).canonicalPath() + "/" + view + "-perspectives.xml";
+    } else {
+        filename = context->athlete->home->config().canonicalPath() + "/" + view + "-perspectives.xml";
+    }
 
-    QString filename = context->athlete->home->config().canonicalPath() + "/" + view + "-perspectives.xml";
+    printf("saveState: %s \n", filename.toStdString().c_str());
+
     QFile file(filename);
     if (!file.open(QFile::WriteOnly)) {
         QMessageBox msgBox;
@@ -299,7 +304,16 @@ void
 AbstractView::restoreState(bool useDefault)
 {
     // restore window state
-    QString filename = context->athlete->home->config().canonicalPath() + "/" + view + "-perspectives.xml";
+    QString filename;
+    if (type == VIEW_EQUIPMENT) {
+        filename = QDir(gcroot).canonicalPath() + "/" + view + "-perspectives.xml";
+    } else {
+        filename = context->athlete->home->config().canonicalPath() + "/" + view + "-perspectives.xml";
+    }
+
+    printf("restoreState: %s \n", filename.toStdString().c_str());
+
+
     QFileInfo finfo(filename);
 
     QString content = "";

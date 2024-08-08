@@ -795,6 +795,8 @@ OverviewConfigDialog::exportChart()
 EquipOverviewWindow::EquipOverviewWindow(Context* context, int scope, bool blank) :
     OverviewWindow(context, scope, blank)
 {
+    printf("EquipOverviewWindow create\n");
+
     eqCalc = new EquipCalculator(context);
 
     connect(context, SIGNAL(configChanged(qint32)), this, SLOT(configChanged(qint32)));
@@ -810,6 +812,7 @@ EquipOverviewWindow::EquipOverviewWindow(Context* context, int scope, bool blank
 EquipOverviewWindow::~EquipOverviewWindow()
 {
     delete eqCalc;
+    printf("EquipOverviewWindow delete\n");
 }
 
 void
@@ -840,5 +843,6 @@ EquipOverviewWindow::configChanged(qint32 cfg) {
 void
 EquipOverviewWindow::calculate()
 {
+    printf("EquipOverviewWindow calculate\n");
     eqCalc->RecalculateEquipSpace(title(), space);
 }

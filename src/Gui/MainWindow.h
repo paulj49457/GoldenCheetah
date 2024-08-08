@@ -64,7 +64,9 @@ class SaveSingleDialogWidget;
 class ChooseCyclistDialog;
 class SearchFilterBox;
 class NewSideBar;
+class AbstractView;
 class AthleteView;
+class EquipView;
 
 
 class MainWindow;
@@ -124,6 +126,9 @@ class MainWindow : public QMainWindow
         SplashScreen *splash;
         void setSplash();
         void clearSplash();
+
+        AbstractView* getAbstractView(int view);
+        unsigned int getChartMask(int view);
 
     signals:
         void backClicked();
@@ -304,6 +309,7 @@ class MainWindow : public QMainWindow
         // when loading athlete
         NewSideBar *sidebar;
         AthleteView *athleteView;
+        EquipView* equipView;
 
 #ifndef Q_OS_MAC
         QTFullScreen *fullScreen;

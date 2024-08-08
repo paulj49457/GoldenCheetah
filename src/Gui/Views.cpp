@@ -64,6 +64,8 @@ AnalysisView::~AnalysisView()
     appsettings->setValue(GC_SETTINGS_MAIN_SIDEBAR "analysis", _sidebar);
     delete analSidebar;
     //delete hw; tabview deletes after save state
+
+    // ptj saveState(); // writes analysis-perspectives.xml
 }
 
 void
@@ -153,6 +155,8 @@ DiaryView::~DiaryView()
     appsettings->setValue(GC_SETTINGS_MAIN_SIDEBAR "diary", _sidebar);
     delete diarySidebar;
     //delete hw; tabview deletes after save state
+
+    // ptj saveState(); // writes diary-perspectives.xml
 }
 
 void
@@ -208,6 +212,8 @@ TrendsView::~TrendsView()
     appsettings->setValue(GC_SETTINGS_MAIN_SIDEBAR "trend", _sidebar);
     delete sidebar;
     //delete hw; tabview deletes after save state
+
+    // ptj saveState(); // writes home-perspectives.xml
 }
 
 void
@@ -323,6 +329,8 @@ TrainView::~TrainView()
     appsettings->setValue(GC_SETTINGS_MAIN_SIDEBAR "train", _sidebar);
     delete trainTool;
     //delete hw; tabview deletes after save state
+
+    // ptj saveState(); // writes train-perspectives.xml
 }
 
 void
@@ -349,8 +357,10 @@ TrainView::onSelectionChanged()
 EquipView::EquipView(Context* context, QStackedWidget* controls) :
         AbstractView(context, VIEW_EQUIPMENT, "equipment", "Equipment Management")
 {
+    printf("EquipView create\n");
+
     // collapsing the equipment navigators doesn't make sense in the
-    // equipment view, so disable the QSplitters collaspsing capability.
+    // equipment view, so disable the QSplitters collapsing capability.
     splitter->setCollapsible(0, false);
 
     // perspectives are stacked
@@ -367,6 +377,8 @@ EquipView::EquipView(Context* context, QStackedWidget* controls) :
 
 EquipView::~EquipView()
 {
+    printf("EquipView delete\n");
+    saveState(); // writes equipment-perspectives.xml
 }
 
 bool
