@@ -3812,7 +3812,7 @@ static bool insensitiveLessThan(const QString &a, const QString &b)
 OverviewItemConfig::OverviewItemConfig(ChartSpaceItem *item) : QWidget(NULL), item(item), block(false)
 {
     QVBoxLayout *main = new QVBoxLayout(this);
-    QFormLayout *layout = new QFormLayout();
+    layout = new QFormLayout();
     main->addLayout(layout);
 
     if (item->type != OverviewItemType::KPI && item->type != OverviewItemType::DATATABLE) main->addStretch();
@@ -4114,6 +4114,9 @@ void
 OverviewItemConfig::setWidgets()
 {
     block = true;
+
+    // ensure bkgd color is initialised.
+    bgcolor->setColor(item->color());
 
     // always have a filter on trends view
     if (item->parent->scope & OverviewScope::TRENDS)  filterEditor->setFilter(item->datafilter);

@@ -563,6 +563,8 @@ QT += charts opengl
 DEFINES += GC_HAVE_OVERVIEW
 HEADERS += Gui/ChartSpace.h Charts/OverviewItems.h Charts/Overview.h
 SOURCES += Gui/ChartSpace.cpp Charts/OverviewItems.cpp Charts/Overview.cpp
+HEADERS += Charts/OverviewEquipment.h Charts/OverviewEquipmentItems.h Charts/EquipmentCalculator.h
+SOURCES += Charts/OverviewEquipment.cpp Charts/OverviewEquipmentItems.cpp Charts/EquipmentCalculator.cpp
 
 # generic chart
 DEFINES += GC_HAVE_GENERIC
@@ -650,7 +652,7 @@ HEADERS += Gui/AboutDialog.h Gui/AddIntervalDialog.h Gui/AnalysisSidebar.h Gui/C
            Gui/MergeActivityWizard.h Gui/RideImportWizard.h Gui/SplitActivityWizard.h Gui/SolverDisplay.h Gui/MetricSelect.h \
            Gui/AddTileWizard.h Gui/NavigationModel.h Gui/AthleteView.h Gui/AthleteConfigDialog.h Gui/AthletePages.h Gui/Perspective.h \
            Gui/PerspectiveDialog.h Gui/SplashScreen.h Gui/StyledItemDelegates.h Gui/MetadataDialog.h Gui/ActionButtonBox.h \
-           Gui/MetricOverrideDialog.h
+           Gui/MetricOverrideDialog.h Gui/EquipmentView.h
 
 # metrics and models
 HEADERS += Metrics/Banister.h Metrics/CPSolver.h Metrics/Estimator.h Metrics/ExtendedCriticalPower.h Metrics/HrZones.h Metrics/PaceZones.h \
@@ -761,7 +763,7 @@ SOURCES += Gui/AboutDialog.cpp Gui/AddIntervalDialog.cpp Gui/AnalysisSidebar.cpp
            Gui/MergeActivityWizard.cpp Gui/RideImportWizard.cpp Gui/SplitActivityWizard.cpp Gui/SolverDisplay.cpp Gui/MetricSelect.cpp \
            Gui/AddTileWizard.cpp Gui/NavigationModel.cpp Gui/AthleteView.cpp Gui/AthleteConfigDialog.cpp Gui/AthletePages.cpp Gui/Perspective.cpp \
            Gui/PerspectiveDialog.cpp Gui/SplashScreen.cpp Gui/StyledItemDelegates.cpp Gui/MetadataDialog.cpp Gui/ActionButtonBox.cpp \
-           Gui/MetricOverrideDialog.cpp
+           Gui/MetricOverrideDialog.cpp Gui/EquipmentView.cpp
 
 ## Models and Metrics
 SOURCES += Metrics/aBikeScore.cpp Metrics/aCoggan.cpp Metrics/AerobicDecoupling.cpp Metrics/Banister.cpp Metrics/BasicRideMetrics.cpp \

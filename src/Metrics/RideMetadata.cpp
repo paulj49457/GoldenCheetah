@@ -1780,6 +1780,7 @@ RideMetadata::readXML(QString filename, QList<KeywordDefinition>&keywordDefiniti
     // them in this release.
     bool hasCalendarText = false;
     bool hasData = false;
+    bool hasEquipment = false;
 
     for (int i=0; i<fieldDefinitions.count(); i++) {
     
@@ -1788,6 +1789,9 @@ RideMetadata::readXML(QString filename, QList<KeywordDefinition>&keywordDefiniti
         }
         if (fieldDefinitions[i].name == "Calendar Text") {
             hasCalendarText = true;
+        }
+        if (fieldDefinitions[i].name == "EquipmentLink") {
+            hasEquipment = true;
         }
 
         // other fields here...
@@ -1818,6 +1822,15 @@ RideMetadata::readXML(QString filename, QList<KeywordDefinition>&keywordDefiniti
         add.type = 2;
         add.diary = false;
         add.tab = "";
+
+        fieldDefinitions.append(add);
+    }
+    if (!hasEquipment) {
+        FieldDefinition add;
+        add.name = "EquipmentLink";
+        add.type = FIELD_TEXT;
+        add.diary = false;
+        add.tab = "Workout";
 
         fieldDefinitions.append(add);
     }
