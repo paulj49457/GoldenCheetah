@@ -21,6 +21,7 @@
 
 #include "AbstractView.h"
 #include "Views.h"
+#include "EquipmentView.h"
 
 class RideNavigator;
 class MainWindow;
@@ -28,6 +29,7 @@ class AthleteLoader;
 class ProgressLine;
 class QPaintEvent;
 class NavigationModel;
+class EquipCalculator;
 
 class AthleteTab: public QWidget
 {
@@ -52,6 +54,7 @@ class AthleteTab: public QWidget
         friend class ::MainWindow;
         friend class ::NavigationModel;
         friend class ::AthleteLoader;
+        friend class ::EquipCalculator;
         Context *context;
 
     signals:
