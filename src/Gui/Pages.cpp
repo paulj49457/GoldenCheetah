@@ -2593,12 +2593,13 @@ SummaryFieldsPage::getDefinitions(QList<SummaryKeywordDefinition>& summaryKeywor
 #define FIELDSPAGE_COL_SCREEN_TAB 0
 #define FIELDSPAGE_COL_FIELD 1
 #define FIELDSPAGE_COL_TYPE 2
-#define FIELDSPAGE_COL_VALUES 3
-#define FIELDSPAGE_COL_INTERVAL 4
-#define FIELDSPAGE_COL_EXPRESSION 5
-#define FIELDSPAGE_NUM_COLS 6
+#define FIELDSPAGE_COL_CATEGORY 3
+#define FIELDSPAGE_COL_VALUES 4
+#define FIELDSPAGE_COL_INTERVAL 5
+#define FIELDSPAGE_COL_EXPRESSION 6
+#define FIELDSPAGE_NUM_COLS 7
 
-FieldsPage::FieldsPage(QWidget *parent, QList<FieldDefinition>fieldDefinitions) : QWidget(parent)
+FieldsPage::FieldsPage(QWidget *parent, QList<FieldDefinition> fieldDefinitions) : QWidget(parent), addDeleteInProgress(false)
 {
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
     HelpWhatsThis *help = new HelpWhatsThis(this);
@@ -2608,16 +2609,18 @@ FieldsPage::FieldsPage(QWidget *parent, QList<FieldDefinition>fieldDefinitions) 
                               "If the list is empty, any value is accepted. A list containing "
                               "<tt>*</tt> as its only entry indicates previous values for the "
                               "same field will be used to autocomplete input."));
-    valueDelegate.setDisplayLength(15, 2);
+    //valueDelegate.setDisplayLength(15, 2);
 
     fields = new QTreeWidget;
     fields->headerItem()->setText(FIELDSPAGE_COL_SCREEN_TAB, tr("Screen Tab"));
     fields->headerItem()->setText(FIELDSPAGE_COL_FIELD, tr("Field"));
     fields->headerItem()->setText(FIELDSPAGE_COL_TYPE, tr("Type"));
+    fields->headerItem()->setText(FIELDSPAGE_COL_CATEGORY, tr("Category"));
     fields->headerItem()->setText(FIELDSPAGE_COL_VALUES, tr("Values"));
     fields->headerItem()->setText(FIELDSPAGE_COL_INTERVAL, tr("Interval"));
     fields->headerItem()->setText(FIELDSPAGE_COL_EXPRESSION, tr("Expression"));
     fields->setColumnCount(FIELDSPAGE_NUM_COLS);
+
     fieldTypeDelegate.addItems( {
         tr("Text"),
         tr("Textbox"),
@@ -2638,8 +2641,8 @@ FieldsPage::FieldsPage(QWidget *parent, QList<FieldDefinition>fieldDefinitions) 
     actionButtons->defaultConnect(ActionButtonBox::UpDownGroup, fields);
     actionButtons->defaultConnect(ActionButtonBox::AddDeleteGroup, fields);
 
-    SpecialFields& specials = SpecialFields::getInstance();
-    SpecialTabs& specialTabs = SpecialTabs::getInstance();
+    SpecialFields& sp = SpecialFields::getInstance();
+    SpecialTabs& st = SpecialTabs::getInstance();
     foreach(FieldDefinition field, fieldDefinitions) {
 
         // Hide the internal system metadata, Data is already read-only on Extra tab.
@@ -2650,13 +2653,19 @@ FieldsPage::FieldsPage(QWidget *parent, QList<FieldDefinition>fieldDefinitions) 
 
         QTreeWidgetItem *add = new QTreeWidgetItem(fields->invisibleRootItem());
         add->setFlags(add->flags() | Qt::ItemIsEditable);
-        add->setText(FIELDSPAGE_COL_SCREEN_TAB, specialTabs.displayName(field.tab)); // tab name
-        add->setText(FIELDSPAGE_COL_FIELD, specials.displayName(field.name)); // field name
-        add->setData(FIELDSPAGE_COL_TYPE, Qt::DisplayRole, field.type); // field data type
+        add->setText(FIELDSPAGE_COL_SCREEN_TAB, st.displayName(field.tab)); // tab name
+        add->setText(FIELDSPAGE_COL_FIELD, sp.displayName(field.name)); // field name
+        add->setData(FIELDSPAGE_COL_TYPE, Qt::DisplayRole, field.type); // field type
         add->setText(FIELDSPAGE_COL_VALUES, field.values.join(",")); // values
         fields->setItemWidget(add, FIELDSPAGE_COL_INTERVAL, checkBoxInt);
-        add->setText(FIELDSPAGE_COL_EXPRESSION, field.expression); // expression
+        add->setText(FIELDSPAGE_COL_EXPRESSION, field.expression);
+
+        // Ensure columns are consistent with their field type
+        handleItemChanged(add, FIELDSPAGE_COL_FIELD);
     }
+
+    fields->header()->setStretchLastSection(false);
+    fields->header()->setSectionResizeMode(FIELDSPAGE_COL_VALUES, QHeaderView::Stretch);
 
     mainLayout->addWidget(fields);
     mainLayout->addWidget(actionButtons);
@@ -2666,8 +2675,46 @@ FieldsPage::FieldsPage(QWidget *parent, QList<FieldDefinition>fieldDefinitions) 
     connect(actionButtons, &ActionButtonBox::downRequested, this, &FieldsPage::downClicked);
     connect(actionButtons, &ActionButtonBox::addRequested, this, &FieldsPage::addClicked);
     connect(actionButtons, &ActionButtonBox::deleteRequested, this, &FieldsPage::deleteClicked);
+    connect(fields, SIGNAL(itemChanged(QTreeWidgetItem*, int)), this, SLOT(handleItemChanged(QTreeWidgetItem*, int)));
 
     fields->setCurrentItem(fields->invisibleRootItem()->child(0));
+}
+
+void
+FieldsPage::handleItemChanged(QTreeWidgetItem* item, int column) {
+
+    if (column != FIELDSPAGE_COL_SCREEN_TAB && !addDeleteInProgress) {
+
+        SpecialFields& sp = SpecialFields::getInstance();
+        QString internalFieldName = sp.internalName(item->text(FIELDSPAGE_COL_FIELD));
+
+        // Ensure columns are consistent for the field
+        if (sp.isSpecial(internalFieldName)) {
+
+            // Find the correct type for the special field
+            foreach(FieldDefinition field, GlobalContext::context()->rideMetadata->getFields()) {
+
+                if (field.name == internalFieldName) {
+
+                    item->setText(FIELDSPAGE_COL_CATEGORY, "Special");
+                    item->setData(FIELDSPAGE_COL_TYPE, Qt::DisplayRole, field.type);
+                }
+            }
+        } else {
+
+            dynamic_cast<QCheckBox*>(fields->itemWidget(item, FIELDSPAGE_COL_INTERVAL))->setCheckable(true);
+
+            if (sp.isMetric(internalFieldName)) {
+
+                item->setData(FIELDSPAGE_COL_TYPE, Qt::DisplayRole, FIELD_DOUBLE); // All metrics have Double type.
+                item->setText(FIELDSPAGE_COL_CATEGORY, "Metric");
+                item->setText(FIELDSPAGE_COL_VALUES, "");
+
+            } else {
+                item->setText(FIELDSPAGE_COL_CATEGORY, "Metadata");
+            }
+        }
+    }
 }
 
 void
@@ -2708,6 +2755,8 @@ FieldsPage::downClicked()
 void
 FieldsPage::addClicked()
 {
+    addDeleteInProgress = true;
+
     int index = fields->invisibleRootItem()->indexOfChild(fields->currentItem());
     if (index < 0) index = 0;
     QTreeWidgetItem *add;
@@ -2726,6 +2775,8 @@ FieldsPage::addClicked()
 
     // type button
     fields->setItemWidget(add, FIELDSPAGE_COL_INTERVAL, checkBoxInt);
+    
+    addDeleteInProgress = false;
 
     fields->setCurrentItem(add);
 }
@@ -2734,10 +2785,15 @@ void
 FieldsPage::deleteClicked()
 {
     if (fields->currentItem()) {
+
+        addDeleteInProgress = true;
+
         int index = fields->invisibleRootItem()->indexOfChild(fields->currentItem());
 
         // zap!
         delete fields->invisibleRootItem()->takeChild(index);
+
+        addDeleteInProgress = false;
     }
 }
 
@@ -2762,14 +2818,12 @@ FieldsPage::getDefinitions(QList<FieldDefinition> &fieldList)
 
         add.tab = st.internalName(item->text(FIELDSPAGE_COL_SCREEN_TAB));
         add.name = sp.internalName(item->text(FIELDSPAGE_COL_FIELD));
-        add.values = item->text(FIELDSPAGE_COL_VALUES).split(QRegularExpression("(, *|,)"), Qt::KeepEmptyParts);
-        add.interval = ((QCheckBox*)fields->itemWidget(item, FIELDSPAGE_COL_INTERVAL))->isChecked();
-        add.expression = item->text(FIELDSPAGE_COL_EXPRESSION);
 
-        if (sp.isMetric(add.name))
-            add.type = 4;
-        else
-            add.type = item->data(FIELDSPAGE_COL_TYPE, Qt::DisplayRole).toInt();
+        // handleItemChanged() ensures the field type is correct.
+        add.type = item->data(FIELDSPAGE_COL_TYPE, Qt::DisplayRole).toInt(); 
+        add.values = item->text(FIELDSPAGE_COL_VALUES).split(QRegularExpression("(, *|,)"), Qt::KeepEmptyParts);
+        add.interval = dynamic_cast<QCheckBox*>(fields->itemWidget(item, FIELDSPAGE_COL_INTERVAL))->isChecked();
+        add.expression = item->text(FIELDSPAGE_COL_EXPRESSION);
 
         fieldList.append(add);
     }
@@ -3218,7 +3272,7 @@ DefaultsPage::DefaultsPage
     actionButtons->defaultConnect(ActionButtonBox::UpDownGroup, defaults);
     actionButtons->defaultConnect(ActionButtonBox::AddDeleteGroup, defaults);
 
-    SpecialFields& specials = SpecialFields::getInstance();
+    SpecialFields& sp = SpecialFields::getInstance();
     foreach(DefaultDefinition adefault, defaultDefinitions) {
         QTreeWidgetItem *add;
 
@@ -3226,7 +3280,7 @@ DefaultsPage::DefaultsPage
         add->setFlags(add->flags() | Qt::ItemIsEditable);
 
         // field name
-        add->setText(0, specials.displayName(adefault.field));
+        add->setText(0, sp.displayName(adefault.field));
         // value
         add->setText(1, adefault.value);
         // Linked field

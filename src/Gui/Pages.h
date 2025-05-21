@@ -523,7 +523,11 @@ class FieldsPage : public QWidget
         void downClicked();
         void deleteClicked();
 
+    protected slots:
+        void handleItemChanged(QTreeWidgetItem* item, int column);
+
     private:
+        bool addDeleteInProgress;
         QTreeWidget *fields;
         ActionButtonBox *actionButtons;
         CompleterEditDelegate tabDelegate;
