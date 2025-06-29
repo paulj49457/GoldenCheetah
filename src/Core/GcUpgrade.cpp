@@ -231,12 +231,13 @@ GcUpgrade::upgrade(const QDir &home)
         if (QFile(filename).exists()) {
 
             QList<KeywordDefinition> keywordDefinitions;
+            QList<SummaryKeywordDefinition> summaryKeywordDefinitions;
             QList<FieldDefinition>   fieldDefinitions;
-            QString colorfield;
+            QString colorfield, summaryfield;
             QList<DefaultDefinition> defaultDefinitions;
 
             // read em in
-            RideMetadata::readXML(filename, keywordDefinitions, fieldDefinitions, colorfield, defaultDefinitions);
+            RideMetadata::readXML(filename, keywordDefinitions, summaryKeywordDefinitions, fieldDefinitions, colorfield, summaryfield, defaultDefinitions);
 
             bool updated=false;
 
@@ -267,7 +268,6 @@ GcUpgrade::upgrade(const QDir &home)
                 // ok, one at a time, using this as a template
                 FieldDefinition add;
                 add.tab = pos >= 0 ? fieldDefinitions[pos].tab : tr("Metric");
-                add.diary = false;
                 add.type = GcFieldType::FIELD_DOUBLE;
 
                 // now set pos to non-negative if needed
@@ -316,7 +316,7 @@ GcUpgrade::upgrade(const QDir &home)
 
             if (updated) {
                 // write a new updated version
-                RideMetadata::serialize(filename, keywordDefinitions, fieldDefinitions, colorfield, defaultDefinitions);
+                RideMetadata::serialize(filename, keywordDefinitions, summaryKeywordDefinitions, fieldDefinitions, colorfield, summaryfield, defaultDefinitions);
             }
         }
 
@@ -417,13 +417,14 @@ GcUpgrade::upgrade(const QDir &home)
         // update metadata.xml to include interval metadata
         // just add some very basic fields as an example
         QList<KeywordDefinition> keywordDefinitions;
+        QList<SummaryKeywordDefinition> summaryKeywordDefinitions;
         QList<FieldDefinition>   fieldDefinitions;
-        QString colorfield;
+        QString colorfield, summaryfield;
         QList<DefaultDefinition> defaultDefinitions;
 
         // read em in (should be in parent directory of athlete home)
         filename = home.canonicalPath()+"/../metadata.xml";
-        RideMetadata::readXML(filename, keywordDefinitions, fieldDefinitions, colorfield, defaultDefinitions);
+        RideMetadata::readXML(filename, keywordDefinitions, summaryKeywordDefinitions, fieldDefinitions, colorfield, summaryfield, defaultDefinitions);
 
         // just check we haven't already added Interval metadata
         bool hasIntervalMetadata=false;
@@ -446,7 +447,7 @@ GcUpgrade::upgrade(const QDir &home)
             add.name = "Interval Goal";
             fieldDefinitions << add;
 
-            RideMetadata::serialize(filename, keywordDefinitions, fieldDefinitions, colorfield, defaultDefinitions);
+            RideMetadata::serialize(filename, keywordDefinitions, summaryKeywordDefinitions, fieldDefinitions, colorfield, summaryfield, defaultDefinitions);
         }
 
         // Migrate Data Processor apply-values to new keys
