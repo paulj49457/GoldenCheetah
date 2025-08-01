@@ -28,6 +28,7 @@
 #include "GcUpgrade.h" // for VERSION_CONFIG_PREFIX url to -layout.xml
 #include "LTMSettings.h" // for special case of edit LTM settings
 #include "Overview.h" // for special case of Overview defaults
+#include "EquipmentOverview.h"
 #include "ChartBar.h"
 #include "Utils.h"
 #include "SearchBox.h"
@@ -74,9 +75,9 @@
 static const int tileMargin = 20;
 static const int tileSpacing = 10;
 
-Perspective::Perspective(Context *context, QString title, int type) :
+Perspective::Perspective(Context *context, const QString& title, const QString& view) :
     GcWindow(context), context(context), active(false),  resizing(false), clicked(NULL), dropPending(false),
-    type_(type), title_(title), chartCursor(-2), df(NULL), expression_(""), trainswitch(None)
+    view_(view), title_(title), chartCursor(-2), df(NULL), expression_(""), trainswitch(None)
 {
     SSS;
     // setup control area
@@ -103,12 +104,6 @@ Perspective::Perspective(Context *context, QString title, int type) :
     cl->addWidget(controlStack);
     setControls(cw);
 
-    switch(this->type_) {
-    case VIEW_ANALYSIS: view="analysis"; break;
-    case VIEW_DIARY: view="diary"; break;
-    case VIEW_TRENDS: view="home"; break;
-    case VIEW_TRAIN: view="train"; break;
-    }
     setProperty("isManager", true);
     nomenu=true;
     setAcceptDrops(true);
@@ -123,7 +118,7 @@ Perspective::Perspective(Context *context, QString title, int type) :
 
     QPalette palette;
     //palette.setBrush(backgroundRole(), QColor("#B3B4B6"));
-    palette.setBrush(backgroundRole(), type == VIEW_TRAIN ? GColor(CTRAINPLOTBACKGROUND) : GColor(CPLOTBACKGROUND));
+    palette.setBrush(backgroundRole(), getBackgroundColor());
     setAutoFillBackground(false);
 
     // each style has its own container widget
@@ -200,14 +195,135 @@ Perspective::Perspective(Context *context, QString title, int type) :
     connect(chartbar, SIGNAL(contextMenu(int,int)), this, SLOT(tabMenu(int,int)));
     connect(titleEdit, SIGNAL(textChanged(const QString&)), SLOT(titleChanged()));
 
-    // trends view we should select a library chart when a chart is selected.
-    if (type == VIEW_TRENDS) connect(context, SIGNAL(presetSelected(int)), this, SLOT(presetSelected(int)));
-
-    // Allow realtime controllers to scroll train view with steering movements
-    if (type == VIEW_TRAIN) connect(context, SIGNAL(steerScroll(int)), this, SLOT(steerScroll(int)));
-
     installEventFilter(this);
     qApp->installEventFilter(this);
+}
+
+QColor&
+Perspective::getBackgroundColor() const
+{
+    SSS;
+    static QColor col = GColor(CPLOTBACKGROUND);
+    return col;
+}
+
+AnalysisPerspective::AnalysisPerspective(Context* context, const QString& title)
+    : Perspective(context, title, "analysis")
+{
+    SSS;
+}
+
+DiaryPerspective::DiaryPerspective(Context* context, const QString& title)
+    : Perspective(context, title, "diary")
+{
+    SSS;
+}
+
+TrendsPerspective::TrendsPerspective(Context* context, const QString& title)
+    : Perspective(context, title, "home")
+{
+    SSS;
+    // trends view we should select a library chart when a chart is selected.
+    connect(context, SIGNAL(presetSelected(int)), this, SLOT(presetSelected(int)));
+}
+
+bool
+TrendsPerspective::setExpression(const QString& expr)
+{
+    SSS;
+    if (Perspective::setExpression(expr)) {
+        // notify charts that the filter changed
+        // but only for trends views where it matters
+        foreach(GcWindow * chart, charts)
+            chart->notifyPerspectiveFilterChanged(expression_);
+        return true;
+    }
+    return false;
+}
+
+TrainPerspective::TrainPerspective(Context* context, const QString& title)
+    : Perspective(context, title, "train")
+{
+    SSS;
+    // Allow realtime controllers to scroll train view with steering movements
+    connect(context, SIGNAL(steerScroll(int)), this, SLOT(steerScroll(int)));
+}
+
+QColor&
+TrainPerspective::getBackgroundColor() const
+{
+    SSS;
+    static QColor col = GColor(CTRAINPLOTBACKGROUND);
+    return col;
+}
+
+EquipmentPerspective::EquipmentPerspective(Context* context, const QString& title)
+    : Perspective(context, title, "equipment")
+{
+    SSS;
+}
+
+void
+EquipmentPerspective::showControls()
+{
+    SSS;
+    context->mainWindow->equipView()->chartsettings->adjustSize();
+    context->mainWindow->equipView()->chartsettings->show();
+}
+
+void
+EquipmentPerspective::toXml(QTextStream &out)
+{
+    QString filename = QDir(gcroot).absolutePath()+"/equipment-data.xml";
+
+    // open file - truncate contents
+    QFile file(filename);
+    if (!file.open(QFile::WriteOnly)) {
+        QMessageBox msgBox;
+        msgBox.setIcon(QMessageBox::Critical);
+        msgBox.setText(tr("Problem Saving Equipment Data"));
+        msgBox.setInformativeText(tr("File: %1 cannot be opened for 'Writing'. Please check file properties.").arg(filename));
+        msgBox.exec();
+        return;
+    };
+
+    file.resize(0);
+    QTextStream xmlOut(&file);
+
+#if QT_VERSION < 0x060000
+    xmlOut.setCodec("UTF-8");
+#endif
+
+    // begin document
+    xmlOut << "<!-- This file holds the equipment data information which cannot be derived from calculation           -->\n\n";
+    xmlOut << "<!-- Note: Careful modification of the exisiting fields whilst GC is shutdown should be fine,          -->\n";
+    xmlOut << "<!--       provided the inline comments are followed, new entries cannot be created.                   -->\n";
+    xmlOut << "<!-- Note: Distances are 10,000x greater than expected, until GC is based upon c++23 atomics           -->\n\n";
+
+    xmlOut << "<equipmentdata>\n";
+
+    xmlOut << QString("\t<version>1</version>\n");
+    xmlOut << QString("\t<uom>%1</uom>\n").arg(Utils::xmlprotect(GlobalContext::context()->useMetricUnits ? "metric" : "imperial"));
+
+    // iterate over charts, saving their information
+    foreach (GcChartWindow *chart, charts) {
+
+        xmlOut << "\t<chartname name=\"" << chart->title() << "\">    <!-- For reference -->\n";
+
+        if (chart->type() == GcWindowTypes::EquipmentOverview) {
+            EquipmentOverviewWindow* meta = reinterpret_cast<EquipmentOverviewWindow*>(chart);
+            meta->writeXML(xmlOut);
+        }
+
+        xmlOut << QString("\t</chartname>\n");
+    }
+
+    xmlOut << "</equipmentdata>\n";
+
+    // close file
+    file.close();
+
+    Perspective::toXml(out);
 }
 
 Perspective::~Perspective()
@@ -273,7 +389,7 @@ Perspective::importChart(QMap<QString,QString>properties, bool select)
     const QMetaObject *m = chart->metaObject();
 
     // set all the properties
-    chart->setProperty("view", view);
+    chart->setProperty("view", view_);
     chart->setProperty("perspective", QVariant::fromValue<Perspective*>(this));
 
     // each of the user properties
@@ -328,7 +444,7 @@ Perspective::configChanged(qint32)
     tileArea->verticalScrollBar()->setStyleSheet(AbstractView::ourStyleSheet());
 //#endif
     QPalette palette;
-    palette.setBrush(backgroundRole(), type() == VIEW_TRAIN ? GColor(CTRAINPLOTBACKGROUND) : GColor(CPLOTBACKGROUND));
+    palette.setBrush(backgroundRole(), getBackgroundColor());
     setPalette(palette);
     tileWidget->setPalette(palette);
     tileArea->setPalette(palette);
@@ -340,10 +456,7 @@ Perspective::configChanged(qint32)
         if (currentStyle == 0) {
             if (charts[i]->type() == GcWindowTypes::Overview || charts[i]->type() == GcWindowTypes::OverviewTrends) chartbar->setColor(i, GColor(COVERVIEWBACKGROUND));
             else if (charts[i]->type() == GcWindowTypes::UserAnalysis || charts[i]->type() == GcWindowTypes::UserTrends) chartbar->setColor(i, RGBColor(QColor(charts[i]->property("color").toString())));
-            else {
-                if (type() == VIEW_TRAIN)chartbar->setColor(i, GColor(CTRAINPLOTBACKGROUND));
-                else chartbar->setColor(i, GColor(CPLOTBACKGROUND));
-            }
+            else chartbar->setColor(i, getBackgroundColor());
         }
 
         // set top margin
@@ -471,7 +584,9 @@ Perspective::tabSelected(int index)
         if (currentStyle == 0) charts[index]->setContentsMargins(0,0,0,0);
 
         // show
-        charts[index]->show();
+        for (int i = 0; i < charts.count(); i++) {
+            charts[index]->showChart(i == index);
+        }
         controlStack->setCurrentIndex(index);
         titleEdit->setText(charts[index]->property("title").toString());
         tabbed->setCurrentIndex(index);
@@ -494,7 +609,9 @@ Perspective::tabSelected(int index, bool forride)
     active = true;
 
     if (index >= 0) {
-        charts[index]->show();
+        for (int i = 0; i < charts.count(); i++) {
+            charts[index]->showChart(i == index);
+        }
         if (forride) charts[index]->setProperty("ride", property("ride"));
         else charts[index]->setProperty("dateRange", property("dateRange"));
         controlStack->setCurrentIndex(index);
@@ -508,8 +625,7 @@ void
 Perspective::tabMoved(int to, int from)
 {
     SSS;
-     GcChartWindow *me = charts.takeAt(from);
-     charts.insert(to, me);
+     charts.move(from, to);
 
     // re-order the controls - to reflect new indexes
     controlStack->blockSignals(true);
@@ -726,7 +842,7 @@ Perspective::addChart(GcChartWindow* newone)
         newone->installEventFilter(this);
 
         RideItem *notconst = (RideItem*)context->currentRideItem();
-        newone->setProperty("view", view);
+        newone->setProperty("view", view_);
         newone->setProperty("ride", QVariant::fromValue<RideItem*>(notconst));
         newone->setProperty("dateRange", property("dateRange"));
         newone->setProperty("style", currentStyle);
@@ -744,10 +860,7 @@ Perspective::addChart(GcChartWindow* newone)
 
             // tab colors
             if (newone->type() == GcWindowTypes::Overview || newone->type() == GcWindowTypes::OverviewTrends) chartbar->setColor(chartnum, GColor(COVERVIEWBACKGROUND));
-            else {
-                if (type() == VIEW_TRAIN)chartbar->setColor(chartnum, GColor(CTRAINPLOTBACKGROUND));
-                else chartbar->setColor(chartnum, GColor(CPLOTBACKGROUND));
-            }
+            else chartbar->setColor(chartnum, getBackgroundColor());
 
             // lets not bother with a title in tab view- its in the name of the tab already!
             newone->setContentsMargins(0,0,0,0);
@@ -1330,7 +1443,11 @@ GcWindowDialog::GcWindowDialog(GcWinID type, Context *context, GcChartWindow **h
     // the chart uses it to decide something - apologies for the convoluted
     // method to determine the perspective, but its rare to use this outside
     // the context of a chart or a view
-    win->setProperty("perspective", QVariant::fromValue<Perspective*>(context->mainWindow->athleteTab()->view(context->mainWindow->athleteTab()->currentView())->page()));
+    if (type == GcWindowTypes::EquipmentOverview)
+        win->setProperty("perspective", QVariant::fromValue<Perspective*>(context->mainWindow->equipView()->page()));
+    else
+        win->setProperty("perspective", QVariant::fromValue<Perspective*>(context->mainWindow->athleteTab()->view(context->mainWindow->athleteTab()->currentView())->page()));
+
     chartLayout->addWidget(win);
     //win->setFrameStyle(QFrame::Box);
 
@@ -1352,6 +1469,8 @@ GcWindowDialog::GcWindowDialog(GcWinID type, Context *context, GcChartWindow **h
     // special case
     if (type == GcWindowTypes::Overview || type == GcWindowTypes::OverviewTrends) {
         static_cast<OverviewWindow*>(win)->setConfiguration("");
+    } else if (type == GcWindowTypes::EquipmentOverview) {
+        static_cast<EquipmentOverviewWindow*>(win)->setConfiguration("");
     }
 
     RideItem *notconst = (RideItem*)context->currentRideItem();
@@ -1539,7 +1658,7 @@ Perspective::presetSelected(int n)
 /*--------------------------------------------------------------------------------
  *  Import and Export the Perspective to xml
  * -----------------------------------------------------------------------------*/
-Perspective *Perspective::fromFile(Context *context, QString filename, int type)
+Perspective *Perspective::fromFile(ViewParser* handler, QString filename, int type)
 {
     SSS;
     Perspective *returning = NULL;
@@ -1560,28 +1679,63 @@ Perspective *Perspective::fromFile(Context *context, QString filename, int type)
     QXmlInputSource source;
     source.setData(content);
     QXmlSimpleReader xmlReader;
-    ViewParser handler(context, type, false);
-    xmlReader.setContentHandler(&handler);
-    xmlReader.setErrorHandler(&handler);
+    xmlReader.setContentHandler(handler);
+    xmlReader.setErrorHandler(handler);
 
     // parse and instantiate the charts
     xmlReader.parse(source);
 
     // none loaded ?
-    if (handler.perspectives.count() == 0) return returning;
+    if (handler->perspectives.count() == 0) return returning;
 
     // return the first one with the right type (if there are multiple)
-    for(int i=0; i<handler.perspectives.count(); i++)
-        if (returning == NULL && handler.perspectives[i]->type_ == type)
-            returning = handler.perspectives[i];
+    for(int i=0; i<handler->perspectives.count(); i++)
+        if (returning == NULL && handler->perspectives[i]->type() == type)
+            returning = handler->perspectives[i];
 
     // delete any further perspectives
-    for(int i=0; i<handler.perspectives.count(); i++)
-        if (handler.perspectives[i] != returning)
-            delete (handler.perspectives[i]);
+    for(int i=0; i<handler->perspectives.count(); i++)
+        if (handler->perspectives[i] != returning)
+            delete (handler->perspectives[i]);
 
     // return it, but bear in mind it hasn't been initialised (current ride, date range etc)
     return returning;
+}
+
+ViewParser*
+AnalysisPerspective::getViewParser(bool useDefault) const
+{
+    return new AnalysisViewParser(context, useDefault);
+}
+
+bool
+AnalysisPerspective::relevant(RideItem* item) const {
+    SSS;
+    if ((df == NULL) || (item == NULL)) return false;
+
+    // validate
+    Result ret = df->evaluate(item, NULL);
+    return ret.number();
+}
+
+ViewParser*
+DiaryPerspective::getViewParser(bool useDefault) const {
+    return new DiaryViewParser(context, useDefault);
+}
+
+ViewParser*
+TrendsPerspective::getViewParser(bool useDefault) const {
+    return new TrendsViewParser(context, useDefault);
+}
+
+ViewParser*
+TrainPerspective::getViewParser(bool useDefault) const {
+    return new TrainViewParser(context, useDefault);
+}
+
+ViewParser*
+EquipmentPerspective::getViewParser(bool useDefault) const {
+    return new EquipmentViewParser(context, useDefault);
 }
 
 bool
@@ -1613,7 +1767,7 @@ Perspective::toXml(QTextStream &out)
     SSS;
     out<<"<layout name=\""<< title_
        <<"\" style=\"" << currentStyle
-       <<"\" type=\"" << type_
+       <<"\" type=\"" << type()
        <<"\" expression=\"" << Utils::xmlprotect(expression_)
        <<"\" trainswitch=\"" << (int)trainswitch
        << "\">\n";
@@ -1660,18 +1814,11 @@ Perspective::toXml(QTextStream &out)
  *  Using an expression to switch/filter content
  * -----------------------------------------------------------------------------*/
 
-QString
-Perspective::expression() const
+bool
+Perspective::setExpression(const QString& expr)
 {
     SSS;
-    return expression_;
-}
-
-void
-Perspective::setExpression(QString expr)
-{
-    SSS;
-    if (expression_ == expr) return;
+    if (expression_ == expr) return false;
 
     if (df) {
         delete df;
@@ -1683,25 +1830,7 @@ Perspective::setExpression(QString expr)
     if (expression_ != "")
         df = new DataFilter(this, context, expression_);
 
-    // notify charts that the filter changed
-    // but only for trends views where it matters
-    if (type_ == VIEW_TRENDS)
-        foreach(GcWindow *chart, charts)
-            chart->notifyPerspectiveFilterChanged(expression_);
-}
-
-bool
-Perspective::relevant(RideItem *item)
-{
-    SSS;
-    if (type_ != VIEW_ANALYSIS) return true;
-    else if (df == NULL) return false;
-    else if (df == NULL || item == NULL) return false;
-
-    // validate
-    Result ret = df->evaluate(item, NULL);
-    return ret.number();
-
+    return true;
 }
 
 QStringList
@@ -1777,6 +1906,7 @@ ImportChartDialog::ImportChartDialog(Context *context, QList<QMap<QString,QStrin
         if (view == "home") view = tr("Trends");
         if (view == "analysis") view = tr("Activities");
         if (view == "train") view = tr("Train");
+        if (view == "equipment") view = tr("Equipment");
 
         QTableWidgetItem *t;
 #ifndef GC_HAVE_ICAL
@@ -1862,9 +1992,13 @@ ImportChartDialog::importClicked()
             if (view == tr("Activities"))  { x=1; context->mainWindow->selectAnalysis(); }
             if (view == tr("Diary"))       { x=2; context->mainWindow->selectDiary(); }
             if (view == tr("Train"))       { x=3; context->mainWindow->selectTrain(); }
+            if (view == tr("Equipment"))   { x=4; context->mainWindow->selectEquipment(); }
 
             // add to the currently selected tab and select if only adding one chart
-            context->mainWindow->athleteTab()->view(x)->importChart(list[i], (list.count()==1));
+            if (x == 4)
+                context->mainWindow->equipView()->importChart(list[i], (list.count()==1));
+            else
+                context->mainWindow->athleteTab()->view(x)->importChart(list[i], (list.count()==1));
         }
     }
     accept();

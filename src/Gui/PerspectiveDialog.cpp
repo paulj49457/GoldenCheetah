@@ -204,7 +204,7 @@ PerspectiveDialog::editPerspectiveClicked()
 
         Perspective *editing = tabView->perspectives_[index];
         QString expression=editing->expression();
-        AddPerspectiveDialog *dialog= new AddPerspectiveDialog(this, tabView->context, editing->title_, expression, tabView->type, editing->trainswitch, true);
+        AddPerspectiveDialog *dialog= new AddPerspectiveDialog(this, tabView->context, editing->title_, expression, tabView->viewType(), editing->trainswitch, true);
         int ret= dialog->exec();
         delete dialog;
         if (ret == QDialog::Accepted) {
@@ -221,7 +221,7 @@ PerspectiveDialog::addPerspectiveClicked()
     QString name;
     QString expression;
     Perspective::switchenum trainswitch = Perspective::None;
-    AddPerspectiveDialog *dialog= new AddPerspectiveDialog(this, tabView->context, name, expression, tabView->type, trainswitch);
+    AddPerspectiveDialog *dialog= new AddPerspectiveDialog(this, tabView->context, name, expression, tabView->viewType(), trainswitch);
     int ret= dialog->exec();
     delete dialog;
     if (ret == QDialog::Accepted && name != "") {
@@ -244,7 +244,7 @@ PerspectiveDialog::exportPerspectiveClicked()
     Perspective *current = tabView->perspectives_[index];
 
     QString typedesc;
-    switch (tabView->type) {
+    switch (tabView->viewType()) {
     case VIEW_TRENDS: typedesc="Trends"; break;
     case VIEW_ANALYSIS: typedesc="Analysis"; break;
     case VIEW_DIARY: typedesc="Diary"; break;

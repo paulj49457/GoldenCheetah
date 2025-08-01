@@ -39,6 +39,8 @@ class AnalysisView : public AbstractView
         void setRide(RideItem*ride) override;
         void addIntervals();
 
+        int viewType() const override { return VIEW_ANALYSIS; }
+
         RideNavigator *rideNavigator();
         AnalysisSidebar *analSidebar;
 
@@ -48,6 +50,9 @@ class AnalysisView : public AbstractView
         void compareChanged(bool);
 
     protected:
+
+        Perspective* getViewsPerspective(const QString& name) const override { return new AnalysisPerspective(context, name); }
+        ViewParser* getViewParser(Context* context, bool useDefault) const override { return new AnalysisViewParser(context, useDefault); }
 
         void notifyViewStateRestored() override;
         void notifyViewSidebarChanged() override;
@@ -67,10 +72,17 @@ class DiaryView : public AbstractView
         ~DiaryView();
         void setRide(RideItem*ride) override;
 
+        int viewType() const override { return VIEW_DIARY; }
+
     public slots:
 
         bool isBlank() override;
         void dateRangeChanged(DateRange);
+
+    protected:
+
+        Perspective* getViewsPerspective(const QString& name) const override { return new DiaryPerspective(context, name); }
+        ViewParser* getViewParser(Context* context, bool useDefault) const override { return new DiaryViewParser(context, useDefault); }
 
     private:
         DiarySidebar *diarySidebar;
@@ -87,6 +99,8 @@ class TrainView : public AbstractView
         ~TrainView();
         void close() override;
 
+        int viewType() const override { return VIEW_TRAIN; }
+
     public slots:
 
         bool isBlank() override;
@@ -95,14 +109,16 @@ class TrainView : public AbstractView
     protected:
 
         void notifyViewPerspectiveAdded(Perspective* page) override;
+        Perspective* getViewsPerspective(const QString& name) const override { return new TrainPerspective(context, name); }
+        ViewParser* getViewParser(Context* context, bool useDefault) const override { return new TrainViewParser(context, useDefault); }
 
     private:
 
         TrainSidebar *trainTool;
         TrainBottom *trainBottom;
 
-private slots:
-        void onAutoHideChanged(bool enabled);
+    private slots:
+            void onAutoHideChanged(bool enabled);
 };
 
 class LTMSidebar;
@@ -118,6 +134,7 @@ class TrendsView : public AbstractView
         LTMSidebar *sidebar;
 
         int countActivities(Perspective *, DateRange dr);
+        int viewType() const override { return VIEW_TRENDS; }
 
     signals:
         void dateChanged(DateRange);
@@ -128,6 +145,12 @@ class TrendsView : public AbstractView
         void justSelected();
         void dateRangeChanged(DateRange);
         void compareChanged(bool);
+
+    protected:
+
+        Perspective* getViewsPerspective(const QString& name) const override { return new TrendsPerspective(context, name); }
+        ViewParser* getViewParser(Context* context, bool useDefault) const override { return new TrendsViewParser(context, useDefault); }
+
 };
 
 #endif // _GC_Views_h

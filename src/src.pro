@@ -564,6 +564,10 @@ DEFINES += GC_HAVE_OVERVIEW
 HEADERS += Gui/ChartSpace.h Charts/OverviewItems.h Charts/Overview.h
 SOURCES += Gui/ChartSpace.cpp Charts/OverviewItems.cpp Charts/Overview.cpp
 
+# equipment feature
+HEADERS += Charts/EquipmentOverview.h Charts/EquipmentOverviewItems.h Charts/EquipmentCalculator.h  Gui/EquipmentView.h
+SOURCES += Charts/EquipmentOverview.cpp Charts/EquipmentOverviewItems.cpp Charts/EquipmentCalculator.cpp  Gui/EquipmentView.cpp
+
 # generic chart
 DEFINES += GC_HAVE_GENERIC
 HEADERS += Charts/UserChartWindow.h Charts/UserChartOverviewItem.h Charts/UserChart.h Charts/UserChartData.h \

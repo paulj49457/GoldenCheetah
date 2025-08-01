@@ -33,6 +33,8 @@
 
 #include "ChartSpace.h"
 #include "OverviewItems.h"
+#include "AddTileWizard.h"
+#include "HelpWhatsThis.h"
 
 class OverviewWindow : public GcChartWindow
 {
@@ -42,8 +44,6 @@ class OverviewWindow : public GcChartWindow
     Q_PROPERTY(int minimumColumns READ minimumColumns WRITE setMinimumColumns USER true)
 
     public:
-
-        OverviewWindow(Context *context, int scope=OverviewScope::ANALYSIS, bool blank=false);
 
         // used by children
         Context *context;
@@ -58,48 +58,138 @@ class OverviewWindow : public GcChartWindow
         void setMinimumColumns(int x) { if (x>0 && x< 11) {mincolsEdit->setValue(x); space->setMinimumColumns(x); }}
 
         // add a tile to the window
-        void addTile();
+        virtual ChartSpaceItem* addTile();
         void importChart();
         void settings();
 
         // config item requested
-        void configItem(ChartSpaceItem *, QPoint);
+        virtual void configItem(ChartSpaceItem *item, QPoint pos) = 0;
+
+        const ChartSpace* getSpace() const { return space; };
+
+    protected:
+
+        // Hide constructor to create an Abstract class
+        OverviewWindow(Context* context, int scope, bool blank);
+
+        // Support optional derived window behaviour
+        virtual void tileAddedNotication(ChartSpaceItem* /* added */) {}
+        virtual void importChartNotification(ChartSpaceItem* /* add */) {}
+
+        // Support derived window behaviour
+        virtual void loadItemSpecificData() {};
+        virtual QString getChartSource() const = 0;
+        virtual GcWindowTypes::gcwinid getWindowType() const = 0;
+        virtual AddTileWizard* getTileWizard(ChartSpaceItem* added) const = 0;
+
+        // Support additional tile types in derived classes for get/set tile config.
+        virtual void getTileConfig(ChartSpaceItem* item, QString& config) const;
+        virtual void setTileConfig(const QJsonObject& obj, int type, const QString& name,
+                                   const QString& datafilter, int order, int column,
+                                   int span, int deep, ChartSpaceItem* add) const;
+
+        HelpWhatsThis* help;
+        ChartSpace* space;
+        QFormLayout *formlayout;
 
     private:
 
         // gui setup
-        ChartSpace *space;
         bool configured;
-        int scope;
         bool blank;
 
         QSpinBox *mincolsEdit;
 };
+
+class AnalysisOverviewWindow : public OverviewWindow {
+
+    public:
+        AnalysisOverviewWindow(Context* context, bool blank = false);
+
+        void configItem(ChartSpaceItem* item, QPoint pos) override;
+
+    protected:
+        void tileAddedNotication(ChartSpaceItem* added) override { if (added->parent->currentRideItem) added->setData(added->parent->currentRideItem); }
+        void importChartNotification(ChartSpaceItem* add) override { if (space->currentRideItem) add->setData(space->currentRideItem); }
+        QString getChartSource() const override { return ":charts/overview-analysis.gchart"; }
+        virtual GcWindowTypes::gcwinid getWindowType() const override { return GcWindowTypes::UserAnalysis; }
+        AddTileWizard* getTileWizard(ChartSpaceItem* added) const override { return new AddTileWizard(context, space, OverviewScope::ANALYSIS, added); }
+};
+
+class TrendsOverviewWindow : public OverviewWindow {
+
+    public:
+        TrendsOverviewWindow(Context* context, bool blank = false);
+
+        void configItem(ChartSpaceItem* item, QPoint pos) override;
+
+    protected:
+        void tileAddedNotication(ChartSpaceItem* added) override { added->setDateRange(added->parent->currentDateRange); }
+        void importChartNotification(ChartSpaceItem* add) override { add->setDateRange(space->currentDateRange); }
+        QString getChartSource() const override { return ":charts/overview-trends.gchart"; }
+        virtual GcWindowTypes::gcwinid getWindowType() const override { return GcWindowTypes::UserTrends; }
+        AddTileWizard* getTileWizard(ChartSpaceItem* added) const override { return new AddTileWizard(context, space, OverviewScope::TRENDS, added); }
+};
+
 
 class OverviewConfigDialog : public QDialog
 {
     Q_OBJECT
 
     public:
-        OverviewConfigDialog(ChartSpaceItem*, QPoint pos);
-        ~OverviewConfigDialog();
 
+        ~OverviewConfigDialog();
 
     public slots:
 
         void removeItem();
-        void exportChart();
+        void exportUserChart();
         void close();
 
     protected:
 
+        // Hide constructor to create an Abstract class
+        OverviewConfigDialog(ChartSpaceItem*, QPoint pos);
+
         void showEvent(QShowEvent*) override;
+
+        // Support optional derived config dialog behaviour
+        virtual void updateItemNotification() {};
+
+        // Support derived config dialog behaviour
+        virtual QString getViewForExport() const = 0;
+        virtual QString getTypeForExport() const = 0;
+
+        HelpWhatsThis* help;
+        ChartSpaceItemDetail itemDetail;
+        ChartSpaceItem* item;
 
     private:
         QPoint pos;
-        ChartSpaceItem *item;
         QVBoxLayout *main;
         QPushButton *remove, *ok, *exp;
+};
+
+class AnalysisOverviewConfigDialog : public OverviewConfigDialog {
+
+    public:
+        AnalysisOverviewConfigDialog(ChartSpaceItem* item, QPoint pos);
+
+    protected:
+        void updateItemNotification() override { if (item->parent->currentRideItem) item->setData(item->parent->currentRideItem); }
+        QString getViewForExport() const override { return "analysis"; }
+        QString getTypeForExport() const override { return QString::number(GcWindowTypes::UserAnalysis); }
+};
+
+class TrendsOverviewConfigDialog : public OverviewConfigDialog {
+
+    public:
+        TrendsOverviewConfigDialog(ChartSpaceItem* item, QPoint pos);
+
+    protected:
+        void updateItemNotification() override { item->setDateRange(item->parent->currentDateRange); }
+        QString getViewForExport() const override { return "home"; }
+        QString getTypeForExport() const override { return QString::number(GcWindowTypes::UserTrends); }
 };
 
 #endif // _GC_OverviewWindow_h

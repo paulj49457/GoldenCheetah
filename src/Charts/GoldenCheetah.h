@@ -277,6 +277,8 @@ public:
     void reveal();
     void unreveal();
 
+    virtual void showChart(bool visible) { if (visible) show(); }
+
     // overlay widget
     GcOverlayWidget *overlayWidget;
     bool wantOverlay;
@@ -305,9 +307,9 @@ public:
 public slots:
     void hideRevealControls();
     void saveImage();
-    void saveChart();
+    virtual void saveChart();
 #ifdef GC_HAS_CLOUD_DB
-    void exportChartToCloudDB();
+    virtual void exportChartToCloudDB();
     bool chartHasUserMetrics();
 #endif
     void colorChanged(QColor);

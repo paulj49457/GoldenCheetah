@@ -54,7 +54,6 @@ class AbstractView : public QWidget
 
     public:
 
-        AbstractView(Context *context, int type, const QString& view, const QString& heading);
         virtual ~AbstractView();
         virtual void close() {};
 
@@ -87,7 +86,7 @@ class AbstractView : public QWidget
         int currentPerspective() const { if (pstack && pstack->currentIndex() >=0) return pstack->currentIndex(); else return 0; }
 
         // add a new perspective
-        Perspective *addPerspective(QString);
+        Perspective *addPerspective(const QString& name);
         void removePerspective(Perspective *);
         void swapPerspective(int from, int to); // reorder by moving 1 pos at a time
 
@@ -106,11 +105,11 @@ class AbstractView : public QWidget
         void setSelected(bool x) { _selected=x; selectionChanged(); }
         bool isSelected() const { return _selected; }
 
-        int viewType() { return type; }
+        virtual int viewType() const = 0;
 
         void importChart(QMap<QString,QString>properties, bool select) { perspective_->importChart(properties, select); }
 
-        bool importPerspective(QString filename);
+        bool importPerspective(const QString& filename);
         void exportPerspective(Perspective *, QString filename);
 
         AppearanceSettings defaultAppearance; // default state for sidebar etc
@@ -148,10 +147,15 @@ class AbstractView : public QWidget
 
     protected:
 
+        // Hide constructor to create an Abstract class
+        AbstractView(Context* context, const QString& view, const QString& heading);
+
+        virtual Perspective* getViewsPerspective(const QString& name) const = 0;
+        virtual ViewParser* getViewParser(Context* context, bool useDefault) const = 0;
+
         Context *context;
-        const int type; // used by windowregistry; e.g VIEW_TRAIN VIEW_ANALYSIS VIEW_DIARY VIEW_TRENDS
-                        // we don't care what values are pass through to the GcWindowRegistry to decide
-                        // what charts are relevant for this view.
+
+        // The following are used in the class destructor so cannot be obtained from derived classes.
         const QString view; // type of view:  "train", "analysis", "diary", "home"
         QString viewCfgPath; // directory path to the view's configuration
 
@@ -201,7 +205,6 @@ class ViewParser : public QXmlDefaultHandler
 {
 
 public:
-    ViewParser(Context *context, int type, bool useDefault) : style(2), context(context), type(type), useDefault(useDefault) {}
 
     // the results!
     QList<Perspective*> perspectives;
@@ -215,13 +218,69 @@ public:
     bool characters( const QString& str );
 
 protected:
+
+    // Hide constructor to create an Abstract class
+    ViewParser(Context* context, bool useDefault) : style(2), context(context), useDefault(useDefault) {}
+
+    virtual Perspective* getViewParsersPerspective(const QString& name) const = 0;
+
     Context *context;
     GcChartWindow *chart;
     Perspective *page; // current
-    int type; // what type of view is this VIEW_{HOME,ANALYSIS,DIARY,TRAIN}
     bool useDefault; // force a reset by using the default layouts
 
 };
+
+class AnalysisViewParser : public ViewParser {
+
+    public:
+        AnalysisViewParser(Context* context, bool useDefault) : ViewParser(context, useDefault) {}
+
+    protected:
+        Perspective* getViewParsersPerspective(const QString& name) const override {
+            return new AnalysisPerspective(context, name); }
+};
+
+class DiaryViewParser : public ViewParser {
+
+    public:
+        DiaryViewParser(Context* context, bool useDefault) : ViewParser(context, useDefault) {}
+
+    protected:
+        Perspective* getViewParsersPerspective(const QString& name) const override {
+            return new DiaryPerspective(context, name); }
+};
+
+class TrendsViewParser : public ViewParser {
+
+    public:
+        TrendsViewParser(Context* context, bool useDefault) : ViewParser(context, useDefault) {}
+
+    protected:
+        Perspective* getViewParsersPerspective(const QString& name) const override {
+            return new TrendsPerspective(context, name); }
+};
+
+class TrainViewParser : public ViewParser {
+
+    public:
+        TrainViewParser(Context* context, bool useDefault) : ViewParser(context, useDefault) {}
+
+    protected:
+        Perspective* getViewParsersPerspective(const QString& name) const override {
+            return new TrainPerspective(context, name); }
+};
+
+class EquipmentViewParser : public ViewParser {
+
+    public:
+        EquipmentViewParser(Context* context, bool useDefault) : ViewParser(context, useDefault) {}
+
+    protected:
+        Perspective* getViewParsersPerspective(const QString& name) const override {
+            return new EquipmentPerspective(context, name); }
+};
+
 // we make our own view splitter for the bespoke handle
 class ViewSplitter : public QSplitter
 {

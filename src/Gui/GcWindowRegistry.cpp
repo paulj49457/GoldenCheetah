@@ -53,6 +53,7 @@
 #include "PlanningWindow.h"
 #ifdef GC_HAVE_OVERVIEW
 #include "Overview.h"
+#include "EquipmentOverview.h"
 #endif
 #include "UserChartWindow.h"
 // Not until v4.0
@@ -64,7 +65,7 @@ GcWindowRegistry* GcWindows;
 void
 GcWindowRegistry::initialize()
 {
-  static GcWindowRegistry GcWindowsInit[36] = {
+  static GcWindowRegistry GcWindowsInit[36+1] = {
     // name                     GcWinID
     { VIEW_TRENDS|VIEW_DIARY, tr("Season Overview"),GcWindowTypes::OverviewTrends },
     { VIEW_TRENDS|VIEW_DIARY, tr("Blank Overview "),GcWindowTypes::OverviewTrendsBlank },
@@ -109,6 +110,7 @@ GcWindowRegistry::initialize()
     { VIEW_TRAIN, tr("Elevation Chart"),GcWindowTypes::ElevationChart },
     { VIEW_ANALYSIS|VIEW_TRENDS|VIEW_TRAIN, tr("Web page"),GcWindowTypes::WebPageWindow },
     { VIEW_TRENDS, tr("Planning Calendar"),GcWindowTypes::Calendar },
+    { VIEW_EQUIPMENT, tr("Equipment Overview"),GcWindowTypes::EquipmentOverview },
     { 0, "", GcWindowTypes::None }};
   // initialize the global registry
   GcWindows = GcWindowsInit;
@@ -233,23 +235,24 @@ GcWindowRegistry::newGcWindow(GcWinID id, Context *context)
     // summary and old ride summary charts now replaced with an Overview - note id gets reset
     case GcWindowTypes::Summary:
     case GcWindowTypes::RideSummary:
-    case GcWindowTypes::Overview: returning = new OverviewWindow(context, ANALYSIS); if (id != GcWindowTypes::Overview) { id=GcWindowTypes::Overview; static_cast<OverviewWindow*>(returning)->setConfiguration(""); } break;
+    case GcWindowTypes::Overview: returning = new AnalysisOverviewWindow(context); if (id != GcWindowTypes::Overview) { id=GcWindowTypes::Overview; static_cast<OverviewWindow*>(returning)->setConfiguration(""); } break;
 
     // blank analysis overview - note id gets reset
-    case GcWindowTypes::OverviewAnalysisBlank: returning = new OverviewWindow(context, ANALYSIS, true); id=GcWindowTypes::Overview; break;
+    case GcWindowTypes::OverviewAnalysisBlank: returning = new AnalysisOverviewWindow(context, true); id=GcWindowTypes::Overview; break;
 
     // old summary now gets a trends overview - note id gets reset
     case GcWindowTypes::DateRangeSummary: // deprecated so now replace with overview
-    case GcWindowTypes::OverviewTrends: returning = new OverviewWindow(context, TRENDS); if (id != GcWindowTypes::OverviewTrends) { id=GcWindowTypes::OverviewTrends; static_cast<OverviewWindow*>(returning)->setConfiguration(""); } break;
+    case GcWindowTypes::OverviewTrends: returning = new TrendsOverviewWindow(context); if (id != GcWindowTypes::OverviewTrends) { id=GcWindowTypes::OverviewTrends; static_cast<OverviewWindow*>(returning)->setConfiguration(""); } break;
 
     // blank trends overview - note id gets reset
-    case GcWindowTypes::OverviewTrendsBlank: returning = new OverviewWindow(context, TRENDS, true); id=GcWindowTypes::OverviewTrends; break;
+    case GcWindowTypes::OverviewTrendsBlank: returning = new TrendsOverviewWindow(context, true); id=GcWindowTypes::OverviewTrends; break;
 
     case GcWindowTypes::SeasonPlan: returning = new PlanningWindow(context); break;
     case GcWindowTypes::UserAnalysis: returning = new UserChartWindow(context, false); break;
     case GcWindowTypes::UserTrends: returning = new UserChartWindow(context, true); break;
     case GcWindowTypes::Diary:
     case GcWindowTypes::Calendar: returning = new PlanningCalendarWindow(context); break;
+    case GcWindowTypes::EquipmentOverview: returning = new EquipmentOverviewWindow(context); break;
     default: return NULL; break;
     }
     if (returning) returning->setProperty("type", QVariant::fromValue<GcWinID>(id));
