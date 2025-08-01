@@ -33,8 +33,8 @@
 #include "GcUpgrade.h"
 #include "LTMWindow.h"
 
-AbstractView::AbstractView(Context *context, int type, const QString& view, const QString& heading) :
-    QWidget(context->tab), context(context), type(type), view(view),
+AbstractView::AbstractView(Context *context, const QString& view, const QString& heading) :
+    QWidget(context->tab), context(context), view(view),
     _sidebar(true), _tiled(false), _selected(false), lastHeight(130*dpiYFactor), sidewidth(0),
     active(false), bottomRequested(false), bottomHideOnIdle(false), perspectiveactive(false),
     stack(NULL), splitter(NULL), mainSplitter(NULL), 
@@ -111,7 +111,7 @@ AbstractView::splitterMoved(int pos,int)
     sidewidth = splitter->sizes()[0];
 
     // we now have splitter settings for each view
-    QString setting = QString("%1/%2").arg(GC_SETTINGS_SPLITTER_SIZES).arg(type);
+    QString setting = QString("%1/%2").arg(GC_SETTINGS_SPLITTER_SIZES).arg(viewType());
     appsettings->setCValue(context->athlete->cyclist, setting, splitter->saveState());
 
     notifyViewSplitterMoved();
@@ -390,13 +390,14 @@ AbstractView::restoreState(bool useDefault)
                 QXmlInputSource source;
                 source.setData(content);
                 QXmlSimpleReader xmlReader;
-                ViewParser handler(context, type, useDefault);
-                xmlReader.setContentHandler(&handler);
-                xmlReader.setErrorHandler(&handler);
+                ViewParser* handler = getViewParser(context, useDefault);
+                xmlReader.setContentHandler(handler);
+                xmlReader.setErrorHandler(handler);
 
                 // parse and instantiate the charts
                 xmlReader.parse(source);
-                restored = handler.perspectives;
+                restored = handler->perspectives;
+                delete handler;
 
                 setUpdatesEnabled(true);
             }
@@ -425,20 +426,21 @@ AbstractView::restoreState(bool useDefault)
         QXmlInputSource source;
         source.setData(content);
         QXmlSimpleReader xmlReader;
-        ViewParser handler(context, type, useDefault);
-        xmlReader.setContentHandler(&handler);
-        xmlReader.setErrorHandler(&handler);
+        ViewParser* handler = getViewParser(context, useDefault);
+        xmlReader.setContentHandler(handler);
+        xmlReader.setErrorHandler(handler);
 
         // parse and instantiate the charts
         xmlReader.parse(source);
-        restored += handler.perspectives;
+        restored += handler->perspectives;
+        delete handler;
 
         setUpdatesEnabled(true);
     }
     if (legacy && restored.count() >= 1) restored[0]->title_ = "Legacy";
 
     // MUST have at least one
-    if (restored.count() == 0)  restored << new Perspective(context, "empty", type);
+    if (restored.count() == 0)  restored << getViewsPerspective("empty");
 
     // initialise them
     foreach(Perspective *page, restored) appendPerspective(page);
@@ -459,9 +461,12 @@ AbstractView::appendPerspective(Perspective *page)
 }
 
 bool
-AbstractView::importPerspective(QString filename)
+AbstractView::importPerspective(const QString& filename)
 {
-    Perspective *newone = Perspective::fromFile(context, filename, type);
+    ViewParser* viewParser = getViewParser(context, false);
+    Perspective *newone = Perspective::fromFile(viewParser, filename, viewType());
+    delete viewParser;
+
     if (newone) {
         appendPerspective(newone);
         return true;
@@ -480,9 +485,9 @@ AbstractView::exportPerspective(Perspective *p, QString filename)
 }
 
 Perspective *
-AbstractView::addPerspective(QString name)
+AbstractView::addPerspective(const QString& name)
 {
-    Perspective *page = new Perspective(context, name, type);
+    Perspective *page = getViewsPerspective(name);
 
     notifyViewPerspectiveAdded(page);
 
@@ -570,7 +575,7 @@ AbstractView::setPages(QStackedWidget *pages)
     splitter->insertWidget(-1, mainSplitter);
 
     // restore sizes
-    QString setting = QString("%1/%2").arg(GC_SETTINGS_SPLITTER_SIZES).arg(type);
+    QString setting = QString("%1/%2").arg(GC_SETTINGS_SPLITTER_SIZES).arg(viewType());
     QVariant splitterSizes = appsettings->cvalue(context->athlete->cyclist, setting); 
 
     // new (3.1) mechanism 
@@ -689,7 +694,7 @@ AbstractView::sidebarChanged()
         sidebar_->show();
 
         // Restore sizes
-        QString setting = QString("%1/%2").arg(GC_SETTINGS_SPLITTER_SIZES).arg(type);
+        QString setting = QString("%1/%2").arg(GC_SETTINGS_SPLITTER_SIZES).arg(viewType());
         QVariant splitterSizes = appsettings->cvalue(context->athlete->cyclist, setting);
         if (splitterSizes.toByteArray().size() > 1 ) {
             splitter->restoreState(splitterSizes.toByteArray());
@@ -940,7 +945,7 @@ bool ViewParser::startElement( const QString&, const QString&, const QString &na
     if (name == "layout") {
 
         QString name="General";
-        int typetouse=type;
+        int typetouse=0;
         int trainswitch=0;
         QString expression;
         for(int i=0; i<attrs.count(); i++) {
@@ -962,7 +967,7 @@ bool ViewParser::startElement( const QString&, const QString&, const QString &na
         }
 
         // we need a new perspective for this view type
-        page = new Perspective(context, name, typetouse);
+        page = getViewParsersPerspective(name);
         page->setExpression(expression);
         page->setTrainSwitch(trainswitch);
         perspectives.append(page);
