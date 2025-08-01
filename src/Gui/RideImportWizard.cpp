@@ -1178,7 +1178,6 @@ RideImportWizard::abortClicked()
     } else {
         if (!isActiveWindow()) activateWindow();
     }
-
 }
 
 

@@ -68,6 +68,7 @@ class WorkoutFilterBox;
 class NewSideBar;
 class AthleteView;
 
+class EquipmentView;
 
 class MainWindow;
 class Athlete;
@@ -96,6 +97,8 @@ class MainWindow : public QMainWindow
         // currently selected tab
         AthleteTab *athleteTab() { return currentAthleteTab; }
         NewSideBar *newSidebar() { return sidebar; }
+        EquipmentView *equipView() { return equipmentView; }
+        const QMap<QString,AthleteTab*>& athleteTabs() { return athletetabs; }
 
         // tab view keeps this up to date
         QAction *showhideSidebar;
@@ -127,11 +130,14 @@ class MainWindow : public QMainWindow
         // working with splash screens
         SplashScreen *splash;
 
+        void setViewStack(int newViewStack);
+
     signals:
         void backClicked();
         void forwardClicked();
         void openingAthlete(QString, Context *);
         void newAthlete(QString);
+        void closedAthlete(QString);
         void deletedAthlete(QString);
 
     public slots:
@@ -201,6 +207,7 @@ class MainWindow : public QMainWindow
         void selectPlan();
         void selectAnalysis();
         void selectTrain();
+        void selectEquipment();
 
         void setSubChartMenu();
         void setChartMenu(QMenu *);
@@ -300,6 +307,13 @@ class MainWindow : public QMainWindow
         // when loading athlete
         NewSideBar *sidebar;
         AthleteView *athleteView;
+        EquipmentView *equipmentView;
+
+        bool eqViewbarState;
+        bool eqSidebarState;
+        bool eqLowbarState;
+        bool eqToolbarState;
+        bool eqAthleteTabbarState;
 
 #ifndef Q_OS_MAC
         QTFullScreen *fullScreen;
@@ -340,7 +354,6 @@ class MainWindow : public QMainWindow
         QSignalMapper *deleteMapper;
 
         // chart menus
-        QMenu *chartMenu;
         QMenu *subChartMenu;
 
         // Toolbar state checkables in View menu / context
@@ -349,6 +362,10 @@ class MainWindow : public QMainWindow
         QAction *showhideLowbar;
         QAction *showhideToolbar;
         QAction *showhideTabbar;
+
+        QAction *impPerspective;
+        QAction *expPerspective;
+        QAction *resetCharts;
 
         QAction *shareAction;
         QAction *checkAction;
