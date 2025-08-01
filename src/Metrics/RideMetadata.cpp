@@ -1593,6 +1593,19 @@ FieldDefinition::fingerprint(QList<FieldDefinition> list)
     return qChecksum(ba);
 }
 
+bool
+FieldDefinition::isCompleterValue(const QString& fieldName, const QString& fieldValue)
+{
+    foreach(FieldDefinition field, GlobalContext::context()->rideMetadata->getFields()) {
+        if (field.name == fieldName) {
+            foreach(QString completerVal, field.values) {
+                if (fieldValue == completerVal) return true;
+            }
+        }
+    }
+    return false;
+}
+
 QCompleter *
 FieldDefinition::getCompleter(QObject *parent, RideCache* rideCache)
 {
@@ -1774,6 +1787,7 @@ RideMetadata::readXML(QString filename, QList<KeywordDefinition>&keywordDefiniti
     // them in this release.
     bool hasCalendarText = false;
     bool hasData = false;
+    bool hasEquipment = false;
 
     for (int i=0; i<fieldDefinitions.count(); i++) {
     
@@ -1782,6 +1796,9 @@ RideMetadata::readXML(QString filename, QList<KeywordDefinition>&keywordDefiniti
         }
         if (fieldDefinitions[i].name == "Calendar Text") {
             hasCalendarText = true;
+        }
+        if (fieldDefinitions[i].name == "EquipmentLink") {
+            hasEquipment = true;
         }
 
         // other fields here...
@@ -1812,6 +1829,15 @@ RideMetadata::readXML(QString filename, QList<KeywordDefinition>&keywordDefiniti
         add.type = GcFieldType::FIELD_SHORTTEXT;
         add.diary = false;
         add.tab = "";
+
+        fieldDefinitions.append(add);
+    }
+    if (!hasEquipment) {
+        FieldDefinition add;
+        add.name = "EquipmentLink";
+        add.type = GcFieldType::FIELD_TEXT;
+        add.diary = false;
+        add.tab = "Workout";
 
         fieldDefinitions.append(add);
     }
