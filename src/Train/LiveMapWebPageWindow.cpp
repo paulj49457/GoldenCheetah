@@ -44,7 +44,7 @@
 // declared in main, we only want to use it to get QStyle
 extern QApplication *application;
 
-LiveMapWebPageWindow::LiveMapWebPageWindow(Context *context) : GcChartWindow(context), context(context)
+LiveMapWebPageWindow::LiveMapWebPageWindow(Context *context) : GcChartWindow(context->mainWindow), context(context)
 {
     HelpWhatsThis *helpContents = new HelpWhatsThis(this);
     this->setWhatsThis(helpContents->getWhatsThisText(HelpWhatsThis::ChartTrain_LiveMap));

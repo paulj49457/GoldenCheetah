@@ -18,9 +18,10 @@
 
 
 #include "PlanningWindow.h"
+#include "MainWindow.h"
 
 PlanningWindow::PlanningWindow(Context *context) :
-    GcChartWindow(context), context(context)
+    GcChartWindow(context->mainWindow), context(context)
 {
     setContentsMargins(0,0,0,0);
     setProperty("color", GColor(CTRENDPLOTBACKGROUND));

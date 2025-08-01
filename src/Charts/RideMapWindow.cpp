@@ -46,7 +46,7 @@
 #include "IntervalSummaryWindow.h"
 #include <QDebug>
 
-RideMapWindow::RideMapWindow(Context *context, int mapType) : GcChartWindow(context), context(context),
+RideMapWindow::RideMapWindow(Context *context, int mapType) : GcChartWindow(context->mainWindow), context(context),
                                                        range(-1), current(NULL), firstShow(true), stale(false)
 {
     //
@@ -165,7 +165,7 @@ RideMapWindow::RideMapWindow(Context *context, int mapType) : GcChartWindow(cont
 
     // put a helper on the screen for mouse over intervals...
     overlayIntervals = new IntervalSummaryWindow(context);
-    addHelper(tr("Intervals"), overlayIntervals);
+    addHelper(context, tr("Intervals"), overlayIntervals);
 
     //
     // connects

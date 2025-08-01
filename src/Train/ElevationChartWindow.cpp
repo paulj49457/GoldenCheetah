@@ -205,7 +205,7 @@ void SlopeWidget::paintEvent(QPaintEvent *event)
 
 
 ElevationChartWindow::ElevationChartWindow(Context *context) :
-    GcChartWindow(context)
+    GcChartWindow(context->mainWindow)
 {
     HelpWhatsThis *helpContents = new HelpWhatsThis(this);
     this->setWhatsThis(helpContents->getWhatsThisText(HelpWhatsThis::ChartTrain_Elevation));

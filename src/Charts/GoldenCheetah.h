@@ -54,7 +54,7 @@ Q_MOC_INCLUDE("Perspective.h");
 
 class GcOverlayWidget;
 class Perspective;
-
+class MainWindow;
 
 class GcWindow : public QFrame
 {
@@ -145,11 +145,8 @@ Q_SIGNALS:
 
 public:
 
-    GcWindow(Context *context);
+    GcWindow(QWidget *parent);
     ~GcWindow();
-
-    //void _setInstanceName(QString x); // GOBJECTS can set their instance name, but not be GcWindows
-    //QString instanceName() const;
 
     // must call this before set controls
     void addAction(QAction *act) { actions << act; }
@@ -263,7 +260,8 @@ private:
     QPropertyAnimation *_revealAnim,
                        *_unrevealAnim;
     QTimer *_unrevealTimer;
-    Context *context;
+
+protected:
 
 public:
 
@@ -272,6 +270,8 @@ public:
     void reveal();
     void unreveal();
 
+    virtual void showChart(bool visible) { if (visible) show(); }
+
     // overlay widget
     GcOverlayWidget *overlayWidget;
     bool wantOverlay;
@@ -279,8 +279,7 @@ public:
     // handle Chart Serialissation
     void serializeChartToQTextStream(QTextStream& out);
 
-
-    GcChartWindow(Context *context);
+    GcChartWindow(QWidget *parent);
 
     // parse a .gchart file / or string and return a list of charts expressed
     // as a property list in a QMap1
@@ -295,14 +294,14 @@ public:
     void setBlankLayout(QLayout *layout);
     void setIsBlank(bool value);
     void setControls(QWidget *x);
-    void addHelper(QString name, QWidget *widget); // add to the overlay widget
+    void addHelper(Context *context, QString name, QWidget *widget); // add to the overlay widget
 
 public Q_SLOTS:
     void hideRevealControls();
     void saveImage();
-    void saveChart();
+    virtual void saveChart();
 #ifdef GC_HAS_CLOUD_DB
-    void exportChartToCloudDB();
+    virtual void exportChartToCloudDB(const QString& cyclist);
     bool chartHasUserMetrics();
 #endif
     void colorChanged(QColor);

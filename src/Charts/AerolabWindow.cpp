@@ -31,7 +31,7 @@
 #include <qwt_plot_zoomer.h>
 
 AerolabWindow::AerolabWindow(Context *context) :
-  GcChartWindow(context), context(context) {
+  GcChartWindow(context->mainWindow), context(context) {
     setControls(NULL);
 
   // Aerolab tab layout:

@@ -115,8 +115,6 @@ private:
     void paintBackground(QPaintEvent *);
     void setScrollers(); // do we need to show a scroll button ?
 
-    Context *context;
-
     QToolButton *left, *right; // scrollers, hidden if menu fits
     GcLabel *titleLabel;
     QStackedWidget *stack; // where the widget gets put

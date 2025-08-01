@@ -163,7 +163,9 @@ AthleteTab::view(GcViewType viewType) const
         case GcViewType::VIEW_PLAN : return planView;
         case GcViewType::VIEW_TRAIN : return trainView;
         default: {
-            qCritical() << "Unhandled view type in AthleteTab, returning nullptr !";
+            printf("Unhandled %d in AthleteTab, returning nullptr \n", int(viewType));
+            qCritical() << "Unhandled" << (int)viewType << "in AthleteTab, returning nullptr !";
+            qFatal() << "stop";
             return nullptr;
         } break;
     }

@@ -235,7 +235,7 @@ GroupByModel::groupFromValue(QString headingName, QString value, double rank, do
 //////////////////////////////////////////////////////////////////////////////
 // RideNavigator
 
-RideNavigator::RideNavigator(Context *context, bool mainwindow) : GcChartWindow(context), context(context), active(false), _groupBy(-1)
+RideNavigator::RideNavigator(Context *context, bool mainwindow) : GcChartWindow(context->mainWindow), context(context), active(false), _groupBy(-1)
 {
     // get column headings
     // default column layouts etc

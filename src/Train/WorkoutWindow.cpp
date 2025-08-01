@@ -25,7 +25,7 @@
 static int MINTOOLHEIGHT = 350; // smaller than this, lose the toolbar
 
 WorkoutWindow::WorkoutWindow(Context *context) :
-    GcChartWindow(context), draw(true), context(context), active(false), recording(false)
+    GcChartWindow(context->mainWindow), draw(true), context(context), active(false), recording(false)
 {
     HelpWhatsThis *helpContents = new HelpWhatsThis(this);
     this->setWhatsThis(helpContents->getWhatsThisText(HelpWhatsThis::ChartTrain_WorkoutEditor));

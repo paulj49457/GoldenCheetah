@@ -205,7 +205,7 @@ EditFixPyScriptDialog::EditFixPyScriptDialog(Context *context, FixPyScript *fix,
     outerSplitter->addWidget(splitter);
 
     // ride editor
-    GcChartWindow *win = GcWindowRegistry::newGcWindow(GcWindowTypes::MetadataWindow, context);
+    GcChartWindow *win = GcWindowRegistry::newGcWindow(GcWindowTypes::MetadataWindow, context->mainWindow, context);
     if (win) {
         win->setProperty("nomenu", true);
 

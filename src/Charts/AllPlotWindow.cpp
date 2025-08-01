@@ -67,7 +67,7 @@
 static const int stackZoomWidth[8] = { 5, 10, 15, 20, 30, 45, 60, 120 };
 
 AllPlotWindow::AllPlotWindow(Context *context) :
-    GcChartWindow(context), current(NULL), context(context), active(false), stale(true), setupStack(false), setupSeriesStack(false), compareStale(true), firstShow(true)
+    GcChartWindow(context->mainWindow), current(NULL), context(context), active(false), stale(true), setupStack(false), setupSeriesStack(false), compareStale(true), firstShow(true)
 {
     // basic setup
     setContentsMargins(0,0,0,0);
@@ -714,7 +714,7 @@ AllPlotWindow::AllPlotWindow(Context *context) :
 
     // put a helper on the screen for mouse over intervals...
     overlayIntervals = new IntervalSummaryWindow(context);
-    addHelper(tr("Intervals"), overlayIntervals);
+    addHelper(context, tr("Intervals"), overlayIntervals);
 
     //mainLayout->addLayout(vlayout,0,0);
     //mainLayout->addWidget(revealBackground,0,0, Qt::AlignTop);

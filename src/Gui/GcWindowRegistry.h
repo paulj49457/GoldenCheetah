@@ -84,7 +84,8 @@ enum gcwinid {
         OverviewPlan=55,
         OverviewPlanBlank = 56,
         PlanAdherence = 57,
-        HtmlTraining = 58
+        HtmlTraining = 58,
+        EquipmentOverview=99 // While in development, ensure it isn't changed when new charts are added.
 };
 };
 typedef enum GcWindowTypes::gcwinid GcWinID;
@@ -97,7 +98,8 @@ enum class GcViewType : unsigned int {
     VIEW_TRAIN =     0x01,
     VIEW_ANALYSIS =  0x02,
     VIEW_PLAN =      0x04,
-    VIEW_TRENDS =    0x08
+    VIEW_TRENDS =    0x08,
+    VIEW_EQUIPMENT = 0x80 // While in development, ensure it isn't changed when new views are added.
 };
 
 // support bitwise "|" and "&" operators for the GcViewType class
@@ -109,6 +111,8 @@ inline constexpr bool operator&(GcViewType Lhs, GcViewType Rhs) {
 }
 
 class GcChartWindow;
+class MainWindow;
+
 class GcWindowRegistry {
     Q_DECLARE_TR_FUNCTIONS(GcWindowRegistry)
     public:
@@ -118,7 +122,7 @@ class GcWindowRegistry {
     GcWinID id;
 
     static void initialize(); // initialize global registry
-    static GcChartWindow *newGcWindow(GcWinID id, Context *context);
+    static GcChartWindow *newGcWindow(GcWinID id, MainWindow *mainWindow, Context *context);
     static QStringList windowsForType(GcViewType type);
     static QList<GcWinID> idsForType(GcViewType type);
     static QString title(GcWinID id);

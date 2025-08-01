@@ -30,7 +30,7 @@
 
 
 DialWindow::DialWindow(Context *context) :
-    GcChartWindow(context), context(context), average(1), isNewLap(false)
+    GcChartWindow(context->mainWindow), context(context), average(1), isNewLap(false)
 {
     HelpWhatsThis *helpContents = new HelpWhatsThis(this);
     this->setWhatsThis(helpContents->getWhatsThisText(HelpWhatsThis::ChartTrain_Telemetry));

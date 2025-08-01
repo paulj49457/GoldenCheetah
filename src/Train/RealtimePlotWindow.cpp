@@ -22,7 +22,7 @@
 #include "HelpWhatsThis.h"
 
 RealtimePlotWindow::RealtimePlotWindow(Context *context) :
-    GcChartWindow(context), context(context), active(false)
+    GcChartWindow(context->mainWindow), context(context), active(false)
 {
     HelpWhatsThis *helpContents = new HelpWhatsThis(this);
     this->setWhatsThis(helpContents->getWhatsThisText(HelpWhatsThis::ChartTrain_Realtime));

@@ -280,7 +280,7 @@ void PythonConsole::contextMenuEvent(QContextMenuEvent *e)
     Q_UNUSED(e)
 }
 
-PythonChart::PythonChart(Context *context, bool ridesummary) : GcChartWindow(context), context(context), ridesummary(ridesummary)
+PythonChart::PythonChart(Context *context, bool ridesummary) : GcChartWindow(context->mainWindow), context(context), ridesummary(ridesummary)
 {
     HelpWhatsThis *helpContents = new HelpWhatsThis(this);
     this->setWhatsThis(helpContents->getWhatsThisText(HelpWhatsThis::Chart_Python));

@@ -23,7 +23,7 @@
 
 
 WorkoutPlotWindow::WorkoutPlotWindow(Context *context) :
-    GcChartWindow(context), context(context)
+    GcChartWindow(context->mainWindow), context(context)
 {
     HelpWhatsThis *helpContents = new HelpWhatsThis(this);
     this->setWhatsThis(helpContents->getWhatsThisText(HelpWhatsThis::ChartTrain_Workout));

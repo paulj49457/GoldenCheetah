@@ -19,9 +19,10 @@
 #include "MetadataWindow.h"
 #include "Colors.h"
 #include "HelpWhatsThis.h"
+#include "MainWindow.h"
 
 MetadataWindow::MetadataWindow(Context *context) :
-    GcChartWindow(context), context(context)
+    GcChartWindow(context->mainWindow), context(context)
 {
     setControls(NULL);
     setRideItem(NULL);

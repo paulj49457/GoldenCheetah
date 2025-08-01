@@ -47,7 +47,7 @@ static const int gearDigits  = 2;
 //
 // Constructor
 //
-HistogramWindow::HistogramWindow(Context *context, bool rangemode) : GcChartWindow(context), context(context), stale(true), source(NULL), active(false), bactive(false), rangemode(rangemode), compareStale(false), useCustom(false), useToToday(false), precision(99)
+HistogramWindow::HistogramWindow(Context *context, bool rangemode) : GcChartWindow(context->mainWindow), context(context), stale(true), source(NULL), active(false), bactive(false), rangemode(rangemode), compareStale(false), useCustom(false), useToToday(false), precision(99)
 {
 
     QWidget *c = new QWidget;

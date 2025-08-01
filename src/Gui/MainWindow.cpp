@@ -35,6 +35,7 @@
 #include "Context.h"
 #include "Athlete.h"
 #include "AthleteView.h"
+#include "EquipmentView.h"
 #include "AthleteBackup.h"
 
 #include "Colors.h"
@@ -118,11 +119,16 @@
 #include "WindowsCrashHandler.cpp"
 #endif
 
+// Equipment management
+#include "EquipmentCalculator.h"
+#include "EquipmentCache.h"
+
 // The order of the GcViewStackIdx values below must match the viewStack widget's tab order, see the MainWindow's constructor below.
 namespace GcViewStackIdx {
 // use constexpr instead of enum class to prevent unecessary casting
 constexpr int SELECT_ATHLETE_VIEW = 0;
 constexpr int ATHLETE_TAB_STACK = 1;
+constexpr int EQUIPMENT_TAB_STACK = 2;
 };
 
 // We keep track of all theopen mainwindows
@@ -164,6 +170,10 @@ MainWindow::MainWindow(const QDir &home)
     // then the context in those instances must be updated when the current athlete is changed.
 
     Context *context = new Context(this);
+
+    // register athlete's signals before the Athlete is created and its rides are loaded.
+    EquipmentCalculator::getInstance().initialise(context); // register athlete signals
+
     context->athlete = new Athlete(context, home);
 
     QString temp = const_cast<AthleteDirectoryStructure*>(context->athlete->directoryStructure())->temp().absolutePath();
@@ -238,7 +248,10 @@ MainWindow::MainWindow(const QDir &home)
 
     sidebar->addItem(QImage(":sidebar/train.png"), tr(TrainView::userName).toLower(), GcSideBarBtnId::TRAIN_BTN, helpNewSideBar->getWhatsThisText(HelpWhatsThis::ScopeBar_Train));
 
+    sidebar->addItem(QImage(":sidebar/equipment.png"), tr(EquipmentView::userName).toLower(), GcSideBarBtnId::EQUIPMENT_BTN, helpNewSideBar->getWhatsThisText(HelpWhatsThis::ScopeBar_Equipment));
+
     sidebar->addStretch();
+
     sidebar->addItem(QImage(":sidebar/apps.png"), tr("apps"), GcSideBarBtnId::APPS_BTN, tr("Feature not implemented yet"));
     sidebar->setItemEnabled(GcSideBarBtnId::APPS_BTN, false);
     sidebar->addStretch();
@@ -246,6 +259,7 @@ MainWindow::MainWindow(const QDir &home)
     // we can click on the quick icons, but they aren't selectable views
     sidebar->addItem(QImage(":sidebar/sync.png"), tr("sync"), GcSideBarBtnId::SYNC_BTN, helpNewSideBar->getWhatsThisText(HelpWhatsThis::ScopeBar_Sync));
     sidebar->setItemSelectable(GcSideBarBtnId::SYNC_BTN, false);
+
     sidebar->addItem(QImage(":sidebar/prefs.png"), tr("options"), GcSideBarBtnId::OPTIONS_BTN, helpNewSideBar->getWhatsThisText(HelpWhatsThis::ScopeBar_Options));
     sidebar->setItemSelectable(GcSideBarBtnId::OPTIONS_BTN, false);
 
@@ -433,8 +447,7 @@ MainWindow::MainWindow(const QDir &home)
     tabbar->setDocumentMode(true);
 #endif
 
-    // only mainWindow is used from the provided context in AthleteView & ChartSpace
-    athleteView = new AthleteView(context);
+    athleteView = new AthleteView(this);
     // the athlete's context is used in AthleteCard, as this represents the athlete
     athleteView->setBootStrapAthlete(context);
 
@@ -444,6 +457,10 @@ MainWindow::MainWindow(const QDir &home)
 
     tabStack = new QStackedWidget(this);
     viewStack->addWidget(tabStack);
+
+    QStackedWidget* equipControls = new QStackedWidget(this);
+    equipmentView = new EquipmentView(this, equipControls);
+    viewStack->addWidget(equipmentView);
 
     // first tab
     athletetabs.insert(currentAthleteTab->context->athlete->home->root().dirName(), currentAthleteTab);
@@ -687,18 +704,21 @@ MainWindow::MainWindow(const QDir &home)
     viewMenu->addAction(tr(TrendsView::userName), this, SLOT(selectTrends()));
     viewMenu->addAction(tr(AnalysisView::userName), this, SLOT(selectAnalysis()));
     viewMenu->addAction(tr(TrainView::userName), this, SLOT(selectTrain()));
+    viewMenu->addAction(tr(EquipmentView::userName), this, SLOT(selectEquipment()));
+
     viewMenu->addSeparator();
-    viewMenu->addAction(tr("Import Perspective..."), this, SLOT(importPerspective()));
-    viewMenu->addAction(tr("Export Perspective..."), this, SLOT(exportPerspective()));
+    impPerspective = viewMenu->addAction(tr("Import Perspective..."), this, SLOT(importPerspective()));
+    expPerspective = viewMenu->addAction(tr("Export Perspective..."), this, SLOT(exportPerspective()));
     viewMenu->addSeparator();
     subChartMenu = viewMenu->addMenu(tr("Add Chart"));
     viewMenu->addAction(tr("Import Chart..."), this, SLOT(importChart()));
 #ifdef GC_HAS_CLOUD_DB
-    viewMenu->addAction(tr("Upload Chart..."), this, SLOT(exportChartToCloudDB()));
-    viewMenu->addAction(tr("Download Chart..."), this, SLOT(addChartFromCloudDB()));
+    viewMenu->addAction(tr("Upload Chart..."), this, &MainWindow::exportChartToCloudDB);
+    connect(GlobalContext::context(), &GlobalContext::exportChartToCloudDB, this, &MainWindow::exportChartToCloudDB);
+    viewMenu->addAction(tr("Download Chart..."), this, &MainWindow::addChartFromCloudDB);
     viewMenu->addSeparator();
 #endif
-    viewMenu->addAction(tr("Reset Layout"), this, SLOT(resetWindowLayout()));
+    resetCharts = viewMenu->addAction(tr("Reset Layout"), this, SLOT(resetWindowLayout()));
     styleAction = viewMenu->addAction(tr("Tabbed not Tiled"), this, SLOT(toggleStyle()));
     styleAction->setCheckable(true);
     styleAction->setChecked(true);
@@ -795,6 +815,9 @@ MainWindow::MainWindow(const QDir &home)
     // get rid of splash when currentTab is shown
     delete splash;
     splash = nullptr;
+
+    // force equipment recalculation as no suitable signal available.
+    GlobalContext::context()->requestEqRecalculation("startup complete");
 }
 
 
@@ -882,9 +905,14 @@ void
 MainWindow::setChartMenu(QMenu *menu)
 {
     // called when chart menu about to be shown
-    // setup only show charts that are relevant
+    // setup to only show charts that are relevant
     // to this view
-    GcViewType mask = currentAthleteTab->currentViewType();
+    GcViewType mask = GcViewType::NO_VIEW_SET;
+    if (viewStack->currentIndex() == GcViewStackIdx::EQUIPMENT_TAB_STACK) {
+        mask = GcViewType::VIEW_EQUIPMENT;
+    } else {
+        mask = currentAthleteTab->currentViewType();
+    }
 
     menu->clear();
     if (mask == GcViewType::NO_VIEW_SET) return;
@@ -907,8 +935,12 @@ MainWindow::addChart(QAction*action)
             break;
         }
     }
-    if (id != GcWindowTypes::None)
-        currentAthleteTab->addChart(id); // called from MainWindow to inset chart
+    if (id != GcWindowTypes::None) {
+        if (viewStack->currentIndex() == GcViewStackIdx::EQUIPMENT_TAB_STACK)
+            equipmentView->addChart(id);
+        else
+            currentAthleteTab->addChart(id); // called from MainWindow to inset chart
+    }
 }
 
 void
@@ -924,7 +956,13 @@ MainWindow::importChart()
 void
 MainWindow::exportPerspective()
 {
-    AbstractView * current = currentAthleteTab->currentView();
+    AbstractView *current = getCurrentView();
+
+    // Equipment view has a single unchangeable private perspective
+    if (current->viewType() == GcViewType::VIEW_EQUIPMENT) {
+        QMessageBox::information(0, tr("Export not possible"), tr("The Equipment View perspective is private and cannot be exported."));
+        return;
+    }
 
     // export the current perspective to a file
     QString suffix;
@@ -942,6 +980,14 @@ MainWindow::exportPerspective()
 void
 MainWindow::importPerspective(QString fileName)
 {
+    AbstractView *current = getCurrentView();
+
+    // Equipment view has a single unchangeable private perspective
+    if (current->viewType() == GcViewType::VIEW_EQUIPMENT) {
+        QMessageBox::information(0, tr("Import not possible"), tr("The Equipment View perspective is private and cannot be imported."));
+        return;
+    }
+
     // import a new perspective from a file
     if (fileName.isEmpty())
         fileName = QFileDialog::getOpenFileName(this, tr("Select Perspective file to import"), "", tr("GoldenCheetah Perspective Files (*.gchartset)"));
@@ -951,7 +997,6 @@ MainWindow::importPerspective(QString fileName)
 
         // import and select it
         pactive = true;
-        AbstractView* current = currentAthleteTab->currentView();
         if (current->importPerspective(fileName)) {
 
             // on success we select the new one forcefully, as the view hasn't changed.
@@ -977,14 +1022,22 @@ MainWindow::exportChartToCloudDB()
 {
     // upload the current chart selected to the chart db
     // called from the sidebar menu
-    Perspective *page=currentAthleteTab->currentView()->page();
+    Perspective *page= getCurrentView()->page();
     if (page->currentStyle == 0 && page->currentChart())
-        page->currentChart()->exportChartToCloudDB();
+        page->currentChart()->exportChartToCloudDB(currentAthleteTab->context->athlete->cyclist);
 }
 
 void
 MainWindow::addChartFromCloudDB()
 {
+    AbstractView *current = getCurrentView();
+
+    // Equipment view has a single unchangeable private perspective
+    if (current->viewType() == GcViewType::VIEW_EQUIPMENT) {
+        QMessageBox::information(0, tr("Download not possible"), tr("Charts cannot be downloaded to the Equipment View from the GoldenCheetah Cloud."));
+        return;
+    }
+
     if (!(appsettings->cvalue(currentAthleteTab->context->athlete->cyclist, GC_CLOUDDB_TC_ACCEPTANCE, false).toBool())) {
        CloudDBAcceptConditionsDialog acceptDialog(currentAthleteTab->context->athlete->cyclist);
        acceptDialog.setModal(true);
@@ -1007,7 +1060,7 @@ MainWindow::addChartFromCloudDB()
             foreach (QString chartDef, chartDefs) {
                 QList<QMap<QString,QString> > properties = GcChartWindow::chartPropertiesFromString(chartDef);
                 for (int i = 0; i< properties.size(); i++) {
-                    currentAthleteTab->currentView()->importChart(properties.at(i), false);
+                    current->importChart(properties.at(i), false);
                 }
             }
         }
@@ -1083,6 +1136,9 @@ MainWindow::closeEvent(QCloseEvent* event)
     bool needtosave = false;
     bool importrunning = false;
 
+    // main window is shutting down so prevent unnecessary equipment calculations
+    EquipmentCalculator::getInstance().disableCalculations(true);
+
     // close all the tabs .. if any refuse we need to ignore
     //                       the close event
     foreach(AthleteTab *tab, closing) {
@@ -1110,8 +1166,13 @@ MainWindow::closeEvent(QCloseEvent* event)
     }
 
     // were any left hanging around? or autoimport in action on any windows, then don't close any
-    if (needtosave || importrunning) event->ignore();
-    else {
+    if (needtosave || importrunning) {
+
+        // main window shutdown aborted, so re-enable equipment calculations
+        EquipmentCalculator::getInstance().disableCalculations(false);
+        event->ignore();
+
+    } else {
 
         // finish off the job and leave
         // clear the clipboard if neccessary
@@ -1121,8 +1182,10 @@ MainWindow::closeEvent(QCloseEvent* event)
         if(mainwindows.removeOne(this) == false)
             qDebug()<<"closeEvent: mainwindows list error";
 
-        // save global mainwindow settings
-        appsettings->setValue(GC_TABBAR, showhideTabbar->isChecked());
+        // save global mainwindow settings, restore saved tabbar state when in equipment view
+        bool tabbarState = (viewStack->currentIndex() == GcViewStackIdx::EQUIPMENT_TAB_STACK) ? eqAthleteTabbarState : showhideTabbar->isChecked();
+        appsettings->setValue(GC_TABBAR, tabbarState);
+
         // wait for threads.. max of 10 seconds before just exiting anyway
         for (int i=0; i<10 && QThreadPool::globalInstance()->activeThreadCount(); i++) {
             QThread::sleep(1);
@@ -1138,6 +1201,11 @@ MainWindow::~MainWindow()
     // aside from the tabs, we may need to clean
     // up any dangling widgets created in MainWindow::MainWindow (?)
     if (configdialog_ptr) configdialog_ptr->close();
+
+    // this is last place to write the equipment cache xml data before the closure
+    // of the QT windows causes tiles within the charts to be deleted, resulting in
+    // their associated equipment cache items also being deleted.
+    EquipmentCache::getInstance().writeXml();
 }
 
 // global search/data filter
@@ -1273,16 +1341,27 @@ MainWindow::sidebarSelected(GcSideBarBtnId id)
     case GcSideBarBtnId::ACTIVITIES_BTN: selectAnalysis(); break;
     case GcSideBarBtnId::REFLECT_BTN: break; // reflect not written yet
     case GcSideBarBtnId::TRAIN_BTN: selectTrain(); break;
+    case GcSideBarBtnId::EQUIPMENT_BTN: selectEquipment(); break;
     case GcSideBarBtnId::APPS_BTN: break;// apps not written yet
 
     default: break;
     }
 }
 
+AbstractView*
+MainWindow::getCurrentView()
+{
+    if (viewStack->currentIndex() == GcViewStackIdx::EQUIPMENT_TAB_STACK) {
+        return equipmentView;
+    } else {
+        return currentAthleteTab->currentView();
+    }
+}
+
 void
 MainWindow::selectAthlete()
 {
-    viewStack->setCurrentIndex(GcViewStackIdx::SELECT_ATHLETE_VIEW);
+    setViewStack(GcViewStackIdx::SELECT_ATHLETE_VIEW);
     back->hide();
     forward->hide();
     perspectiveSelector->hide();
@@ -1293,8 +1372,8 @@ MainWindow::selectAthlete()
 void
 MainWindow::selectAnalysis()
 {
+    setViewStack(GcViewStackIdx::ATHLETE_TAB_STACK);
     resetPerspective(GcViewType::VIEW_ANALYSIS);
-    viewStack->setCurrentIndex(GcViewStackIdx::ATHLETE_TAB_STACK);
     sidebar->setItemSelected(GcSideBarBtnId::ACTIVITIES_BTN, true);
     currentAthleteTab->selectView(GcViewType::VIEW_ANALYSIS);
     back->show();
@@ -1310,8 +1389,8 @@ MainWindow::selectAnalysis()
 void
 MainWindow::selectTrain()
 {
+    setViewStack(GcViewStackIdx::ATHLETE_TAB_STACK);
     resetPerspective(GcViewType::VIEW_TRAIN);
-    viewStack->setCurrentIndex(GcViewStackIdx::ATHLETE_TAB_STACK);
     sidebar->setItemSelected(GcSideBarBtnId::TRAIN_BTN, true);
     currentAthleteTab->selectView(GcViewType::VIEW_TRAIN);
     back->show();
@@ -1327,8 +1406,8 @@ MainWindow::selectTrain()
 void
 MainWindow::selectPlan()
 {
+    setViewStack(GcViewStackIdx::ATHLETE_TAB_STACK);
     resetPerspective(GcViewType::VIEW_PLAN);
-    viewStack->setCurrentIndex(GcViewStackIdx::ATHLETE_TAB_STACK);
     sidebar->setItemSelected(GcSideBarBtnId::PLAN_BTN, true);
     currentAthleteTab->selectView(GcViewType::VIEW_PLAN);
     back->show();
@@ -1341,10 +1420,19 @@ MainWindow::selectPlan()
 }
 
 void
+MainWindow::selectEquipment()
+{
+    setViewStack(GcViewStackIdx::EQUIPMENT_TAB_STACK); // set the available menu options
+    sidebar->setItemSelected(GcSideBarBtnId::EQUIPMENT_BTN, true);
+    perspectiveSelector->hide(); // Equipment view has a single unchangeable perspective.
+    equipmentView->setSelected(true); // Ensure selected tab is visible.
+}
+
+void
 MainWindow::selectTrends()
 {
+    setViewStack(GcViewStackIdx::ATHLETE_TAB_STACK);
     resetPerspective(GcViewType::VIEW_TRENDS);
-    viewStack->setCurrentIndex(GcViewStackIdx::ATHLETE_TAB_STACK);
     sidebar->setItemSelected(GcSideBarBtnId::TRENDS_BTN, true);
     currentAthleteTab->selectView(GcViewType::VIEW_TRENDS);
     back->show();
@@ -1357,6 +1445,72 @@ MainWindow::selectTrends()
     setToolButtons();
 }
 
+void
+MainWindow::setViewStack(int newViewStack)
+{
+    // Entering the equipment view stack
+    if ((viewStack->currentIndex() != GcViewStackIdx::EQUIPMENT_TAB_STACK) &&
+        (newViewStack == GcViewStackIdx::EQUIPMENT_TAB_STACK)) {
+
+        // The following code remembers the menu and window states on entering equipment view
+        eqViewbarState = showhideViewbar->isChecked();
+        showhideViewbar->setChecked(false);
+        showhideViewbar->setEnabled(false);
+
+        eqSidebarState = showhideSidebar->isChecked();
+        showhideSidebar->setChecked(false);
+        showhideSidebar->setEnabled(false);
+
+        eqLowbarState = showhideLowbar->isChecked();
+        showhideLowbar->setChecked(false);
+        showhideLowbar->setEnabled(false);
+
+        eqToolbarState = showhideToolbar->isChecked();
+        showhideToolbar->setChecked(false);
+        showhideToolbar->setEnabled(false);
+        head->hide();
+
+        eqAthleteTabbarState = showhideTabbar->isChecked();
+        showhideTabbar->setChecked(true);
+        showhideTabbar->setEnabled(false);
+        tabbar->show();
+
+        impPerspective->setEnabled(false);
+        expPerspective->setEnabled(false);
+        resetCharts->setEnabled(false);
+        styleAction->setEnabled(false);
+    }
+
+    // Leaving the equipment view stack
+    if ((viewStack->currentIndex() == GcViewStackIdx::EQUIPMENT_TAB_STACK) &&
+        (newViewStack != GcViewStackIdx::EQUIPMENT_TAB_STACK)) {
+
+        // The following code restores the original states when leaving the equipment view.
+        showhideViewbar->setEnabled(true);
+        showhideViewbar->setChecked(eqViewbarState);
+
+        showhideSidebar->setEnabled(true);
+        showhideSidebar->setChecked(eqSidebarState);
+
+        showhideLowbar->setEnabled(true);
+        showhideLowbar->setChecked(eqLowbarState);
+
+        showhideToolbar->setEnabled(true);
+        showhideToolbar->setChecked(eqToolbarState);
+        if (eqToolbarState) head->show(); else head->hide();
+
+        showhideTabbar->setEnabled(true);
+        showhideTabbar->setChecked(eqAthleteTabbarState);
+        if (eqAthleteTabbarState) tabbar->show(); else tabbar->hide();
+
+        impPerspective->setEnabled(true);
+        expPerspective->setEnabled(true);
+        resetCharts->setEnabled(true);
+        styleAction->setEnabled(true);
+    }
+
+    viewStack->setCurrentIndex(static_cast<int>(newViewStack));
+}
 
 bool
 MainWindow::isStarting
@@ -1427,6 +1581,9 @@ MainWindow::resetPerspective(GcViewType viewType, bool force)
     lastathlete = currentAthleteTab;
     lastViewType = viewType;
 
+    // Equipment view has a single unchangeable perspective
+    if (viewStack->currentIndex() == GcViewStackIdx::EQUIPMENT_TAB_STACK) return;
+
     // don't argue just reset the perspective for this view
     AbstractView *current = currentAthleteTab->view(viewType);
 
@@ -1443,7 +1600,10 @@ MainWindow::perspectiveSelected(int index)
     if (pactive) return;
 
     // set the perspective for the current view
-    AbstractView *current = currentAthleteTab->currentView();
+    AbstractView *current = getCurrentView();
+
+    // Equipment view has a single unchangeable private perspective
+    if (current->viewType() == GcViewType::VIEW_EQUIPMENT) return;
 
     // which perspective is currently being shown?
     int prior = current->perspectives_.indexOf(current->perspective_);
@@ -1500,7 +1660,10 @@ MainWindow::perspectiveSelected(int index)
 void
 MainWindow::perspectivesChanged()
 {
-    AbstractView *current = currentAthleteTab->currentView();
+    AbstractView *current = getCurrentView();
+
+    // Equipment view has a single unchangeable private perspective
+    if (current->viewType() == GcViewType::VIEW_EQUIPMENT) return;
 
     // which perspective is currently being selected (before we go setting the combobox)
     Perspective *prior = current->perspective_;
@@ -1671,7 +1834,7 @@ MainWindow::importCharts(QStringList list)
     }
 
     // And import them with a dialog to select location
-    ImportChartDialog importer(currentAthleteTab->context, charts, this);
+    ImportChartDialog importer(this, charts);
     importer.exec();
 }
 
@@ -2152,6 +2315,9 @@ MainWindow::removeAthleteTab(AthleteTab *tab)
     blockTabbarUpdates = false;
 
     setUpdatesEnabled(true);
+
+    // notify everyone the athlete is completely closed.
+    emit closedAthlete(name);
 }
 
 void
@@ -2299,7 +2465,8 @@ MainWindow::saveGCState(Context *context)
 void
 MainWindow::restoreGCState(Context *context)
 {
-    if (viewStack->currentIndex() != GcViewStackIdx::SELECT_ATHLETE_VIEW) {
+    // for an athlete specific view, not select athlete or equipment view
+    if (viewStack->currentIndex() == GcViewStackIdx::ATHLETE_TAB_STACK) {
 
         // not on athlete view...
         GcViewType viewType = currentAthleteTab->currentViewType();
@@ -2675,13 +2842,14 @@ MainWindow::downloadMeasures(QAction *action)
     dialog.exec();
 }
 
+
 void
 MainWindow::loadProgress
 (QString folder, double progress)
 {
     Q_UNUSED(folder)
     if (splash) {
-        splash->showMessage(QString(tr("Loading activities: %1\%")).arg(static_cast<int>(progress)));
+        splash->showMessage(QString(tr("Loading activities: %1%")).arg(static_cast<int>(progress)));
     }
 }
 
@@ -2856,4 +3024,150 @@ MainWindow::setSyncMenu()
     }
 }
 
+/*--------------------------------------------------------------------------------
+ *  Import Chart Dialog - select/deselect charts before importing them
+ * -----------------------------------------------------------------------------*/
+ImportChartDialog::ImportChartDialog(MainWindow *mainWindow, const QList<QMap<QString,QString>>& list) :
+    QDialog(mainWindow), mainWindow(mainWindow), list(list)
+{
+    setWindowFlags(windowFlags());
+    setWindowTitle(tr("Import Charts"));
+    setWindowModality(Qt::ApplicationModal);
+    setMinimumWidth(450 * dpiXFactor);
+    QVBoxLayout *layout = new QVBoxLayout(this);
 
+    table = new QTableWidget(this);
+    cancel = new QPushButton(tr("Cancel"), this);
+    import = new QPushButton(tr("Import"), this);
+
+    // set table
+#ifdef Q_OS_MAC
+    table->setAttribute(Qt::WA_MacShowFocusRect, 0);
+#endif
+    table->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    table->setRowCount(list.count());
+    table->setColumnCount(3);
+    QStringList headings;
+    headings<<"";
+    headings<<tr("View");
+    headings<<tr("Title");
+    table->setHorizontalHeaderLabels(headings);
+    table->setSortingEnabled(false);
+    table->verticalHeader()->hide();
+    table->setShowGrid(false);
+    table->setSelectionMode(QAbstractItemView::NoSelection);
+    table->horizontalHeader()->setStretchLastSection(true);
+    table->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+    table->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+
+    // Populate the list of named searches
+    for(int i=0; i<list.count(); i++) {
+
+        // select XXX fix widget...
+        QCheckBox *c = new QCheckBox(this);
+        c->setChecked(true);
+        table->setCellWidget(i, 0, c);
+
+        QComboBox *com = new QComboBox(this);
+        com->setSizeAdjustPolicy(QComboBox::AdjustToContents); 
+
+        // we should be able to import the chart to any relevant view
+        int winId = list[i].value("TYPE").toInt();
+        GcViewType chartRelevance = GcWindowRegistry::relevanceForId(GcWinID(winId));
+
+        // add entries to combox for all relevant views
+        if (chartRelevance & GcViewType::VIEW_ANALYSIS) com->addItem(tr("Activities"), static_cast<int>(GcViewType::VIEW_ANALYSIS));
+        if (chartRelevance & GcViewType::VIEW_PLAN) com->addItem(tr("Plan"), static_cast<int>(GcViewType::VIEW_PLAN));
+        if (chartRelevance & GcViewType::VIEW_TRENDS) com->addItem(tr("Trends"), static_cast<int>(GcViewType::VIEW_TRENDS));
+        if (chartRelevance & GcViewType::VIEW_TRAIN) com->addItem(tr("Train"), static_cast<int>(GcViewType::VIEW_TRAIN));
+        if (chartRelevance & GcViewType::VIEW_EQUIPMENT) com->addItem(tr("Equipment"), static_cast<int>(GcViewType::VIEW_EQUIPMENT));
+
+        // ensure at least one relevance match
+        if (com->count() > 0) {
+
+            // get the default chart view stored in the file
+            GcViewType chartDefaultView = GcViewType::NO_VIEW_SET;
+            QString view = list[i].value("VIEW");
+
+            if (view == "plan") { chartDefaultView = GcViewType::VIEW_PLAN; }
+            else if (view == "analysis") { chartDefaultView = GcViewType::VIEW_ANALYSIS; }
+            else if (view == "train") { chartDefaultView = GcViewType::VIEW_TRAIN; }
+            else if (view == "home") { chartDefaultView = GcViewType::VIEW_TRENDS; }
+            else if (view == "equipment") { chartDefaultView = GcViewType::VIEW_EQUIPMENT; }
+            else { qDebug() << "The chart's default view" << view
+                            << "is not recognised, defaulting to the first relevant view"; }
+
+            // select the combo box index for the chart's default view,
+            // default to first entry if the chart's default view cannot be found
+            int index = com->findData(static_cast<int>(chartDefaultView));
+            com->setCurrentIndex( (index != -1) ? index : 0);
+
+        } else {
+            chartRelevance = GcViewType::NO_VIEW_SET;
+            com->addItem(tr("Unknown"), static_cast<int>(chartRelevance));
+            qDebug() << "Chart type" << winId << "is not relevant for any View!";
+        }
+
+        table->setCellWidget(i,1,com);
+
+        // title
+        QTableWidgetItem* t = new QTableWidgetItem;
+        t->setText(list[i].value("title"));
+        t->setFlags(t->flags() & (~Qt::ItemIsEditable));
+        table->setItem(i, 2, t);
+
+        // ensure the chart cannot be imported if it is not relevant for any views
+        if (chartRelevance == GcViewType::NO_VIEW_SET) {
+            c->setChecked(false);
+            c->setEnabled(false);
+            com->setEnabled(false);
+        }
+    }
+
+    layout->addWidget(table);
+
+    QHBoxLayout *buttons = new QHBoxLayout;
+    buttons->addStretch();
+    buttons->addWidget(import);
+    buttons->addWidget(cancel);
+    layout->addLayout(buttons);
+
+    connect(import, SIGNAL(clicked(bool)), this, SLOT(importClicked()));
+    connect(cancel, SIGNAL(clicked(bool)), this, SLOT(cancelClicked()));
+}
+
+void
+ImportChartDialog::importClicked()
+{
+    // do stuff
+    for(int i=0; i<list.count(); i++) {
+
+        // is it checked?
+        if (static_cast<QCheckBox*>(table->cellWidget(i,0))->isChecked()) {
+
+            // Retrieve the selected view from the combox
+            GcViewType viewType = static_cast<GcViewType>(static_cast<QComboBox*>(table->cellWidget(i,1))->currentData().toInt());
+
+            switch (viewType) {
+     
+                case GcViewType::VIEW_TRENDS: mainWindow->selectTrends(); break;
+                case GcViewType::VIEW_ANALYSIS: mainWindow->selectAnalysis(); break;
+                case GcViewType::VIEW_PLAN: mainWindow->selectPlan(); break;
+                case GcViewType::VIEW_TRAIN: mainWindow->selectTrain(); break;
+                case GcViewType::VIEW_EQUIPMENT: mainWindow->selectEquipment(); break;
+                default: qDebug() << "Unhandled view type in ImportChartDialog:" << static_cast<int>(viewType); return; break;
+            }
+
+            // the required view is now the current view after the switching above, so
+            // add to the currently selected tab and select if only adding one chart
+            mainWindow->getCurrentView()->importChart(list[i], (list.count()==1));
+        }
+    }
+    accept();
+}
+
+void
+ImportChartDialog::cancelClicked()
+{
+    accept();
+}

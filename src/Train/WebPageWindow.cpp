@@ -85,7 +85,7 @@ class WebSchemeHandler : public QWebEngineUrlSchemeHandler
 // declared in main, we only want to use it to get QStyle
 extern QApplication *application;
 
-WebPageWindow::WebPageWindow(Context *context) : GcChartWindow(context), context(context), firstShow(true)
+WebPageWindow::WebPageWindow(Context *context) : GcChartWindow(context->mainWindow), context(context), firstShow(true)
 {
     //
     // reveal controls widget

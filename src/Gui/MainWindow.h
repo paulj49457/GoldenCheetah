@@ -69,13 +69,14 @@ class SearchFilterBox;
 class WorkoutFilterBox;
 class NewSideBar;
 class AthleteView;
-
+class EquipmentView;
 
 class MainWindow;
 class Athlete;
 class AthleteLoader;
 class Context;
 class AthleteTab;
+class AbstractView;
 class GGraphicsView;
 
 
@@ -98,6 +99,9 @@ class MainWindow : public QMainWindow
         // currently selected tab
         AthleteTab *athleteTab() { return currentAthleteTab; }
         NewSideBar *newSidebar() { return sidebar; }
+        EquipmentView *equipView() { return equipmentView; }
+        AbstractView *getCurrentView();
+        const QMap<QString,AthleteTab*>& athleteTabs() { return athletetabs; }
 
         // tab view keeps this up to date
         QAction *showhideSidebar;
@@ -129,12 +133,15 @@ class MainWindow : public QMainWindow
         // working with splash screens
         SplashScreen *splash;
 
+        void setViewStack(int newViewStack);
+
     signals:
         void backClicked();
         void forwardClicked();
         void openingAthlete(QString, Context *);
         void closingAthlete(QString, Context *);
         void newAthlete(QString);
+        void closedAthlete(QString);
         void deletedAthlete(QString);
         void currentAthlete(QString);
 
@@ -205,6 +212,7 @@ class MainWindow : public QMainWindow
         void selectPlan();
         void selectAnalysis();
         void selectTrain();
+        void selectEquipment();
 
         void setSubChartMenu();
         void setChartMenu(QMenu *);
@@ -309,6 +317,13 @@ class MainWindow : public QMainWindow
         // when loading athlete
         NewSideBar *sidebar;
         AthleteView *athleteView;
+        EquipmentView *equipmentView;
+
+        bool eqViewbarState;
+        bool eqSidebarState;
+        bool eqLowbarState;
+        bool eqToolbarState;
+        bool eqAthleteTabbarState;
 
 #ifndef Q_OS_MAC
         QTFullScreen *fullScreen;
@@ -349,7 +364,6 @@ class MainWindow : public QMainWindow
         QSignalMapper *deleteMapper;
 
         // chart menus
-        QMenu *chartMenu;
         QMenu *subChartMenu;
 
         // Toolbar state checkables in View menu / context
@@ -358,6 +372,10 @@ class MainWindow : public QMainWindow
         QAction *showhideLowbar;
         QAction *showhideToolbar;
         QAction *showhideTabbar;
+
+        QAction *impPerspective;
+        QAction *expPerspective;
+        QAction *resetCharts;
 
         QAction *shareAction;
         QAction *checkAction;
@@ -370,6 +388,27 @@ class MainWindow : public QMainWindow
 #endif
 
         bool blockTabbarUpdates;
+
+};
+
+class ImportChartDialog : public QDialog
+{
+    Q_OBJECT
+
+    public:
+        ImportChartDialog(MainWindow *mainWindow, const QList<QMap<QString,QString>>& list);
+
+    protected:
+        QTableWidget *table;
+        QPushButton *import, *cancel;
+
+    public slots:
+        void importClicked();
+        void cancelClicked();
+
+    private:
+        MainWindow *mainWindow;
+        QList<QMap<QString,QString> >list;
 
 };
 

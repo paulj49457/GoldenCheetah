@@ -18,7 +18,7 @@
 
 #include "ChartBar.h"
 #include "MiniCalendar.h"
-#include "Context.h"
+#include "MainWindow.h"
 
 #include <QFontMetrics>
 
@@ -27,7 +27,7 @@ static int spacing_=12;
 #else
 static int spacing_=8;
 #endif
-ChartBar::ChartBar(Context *context) : QWidget(context->mainWindow), context(context)
+ChartBar::ChartBar(MainWindow *mainWindow) : QWidget(mainWindow), mainWindow(mainWindow)
 {
     // left / right scroller icon
     static QIcon leftIcon = iconFromPNG(":images/mac/left.png");
@@ -117,22 +117,22 @@ ChartBar::ChartBar(Context *context) : QWidget(context->mainWindow), context(con
     barMenu = new QMenu("Add");
     chartMenu = barMenu->addMenu(tr("New Chart"));
 
-    barMenu->addAction(tr("Import Chart ..."), context->mainWindow, SLOT(importChart()));
+    barMenu->addAction(tr("Import Chart ..."), mainWindow, SLOT(importChart()));
 
 #ifdef GC_HAS_CLOUD_DB
-    barMenu->addAction(tr("Download Chart..."), context->mainWindow, SLOT(addChartFromCloudDB()));
+    barMenu->addAction(tr("Download Chart..."), mainWindow, SLOT(addChartFromCloudDB()));
 #endif
 
     // menu
     connect(menuButton, SIGNAL(clicked()), this, SLOT(menuPopup()));
     connect(chartMenu, SIGNAL(aboutToShow()), this, SLOT(setChartMenu()));
-    connect(chartMenu, SIGNAL(triggered(QAction*)), context->mainWindow, SLOT(addChart(QAction*)));
+    connect(chartMenu, SIGNAL(triggered(QAction*)), mainWindow, SLOT(addChart(QAction*)));
 
     // trap resize / mouse events
     installEventFilter(this);
 
     // appearance update
-    connect(context, SIGNAL(configChanged(qint32)), this, SLOT(configChanged(qint32)));
+    connect(GlobalContext::context(), SIGNAL(configChanged(qint32)), this, SLOT(configChanged(qint32)));
 
     configChanged(0);
 }
@@ -204,7 +204,7 @@ ChartBar::addWidget(QString title)
 void
 ChartBar::setChartMenu()
 {
-    context->mainWindow->setChartMenu(chartMenu);
+    mainWindow->setChartMenu(chartMenu);
 }
 
 void
@@ -240,6 +240,11 @@ ChartBar::setColor(int index, QColor color)
     buttons[index]->setColor(color);
 }
 
+void
+ChartBar::setWarning(int index, bool warning)
+{
+    buttons[index]->setWarning(warning);
+}
 
 // tidy up the scrollers on first show...
 void
@@ -425,7 +430,7 @@ ButtonBar::paintBackground(QPaintEvent *)
 
 ChartBarItem::ChartBarItem(ChartBar *chartbar) : QWidget(chartbar), chartbar(chartbar)
 {
-    red = highlighted = checked = false;
+    warning = highlighted = checked = false;
     state = Idle;
     QFont font;
     font.setPointSize(10);
@@ -456,6 +461,7 @@ ChartBarItem::paintEvent(QPaintEvent *)
 
     // now paint the text
     QPen pen(GCColor::invertColor(brush.color()));
+    if (warning) pen.setColor(QColor(255, 170, 0));
     painter.setPen(pen);
     painter.drawText(body, text, Qt::AlignHCenter | Qt::AlignVCenter);
 

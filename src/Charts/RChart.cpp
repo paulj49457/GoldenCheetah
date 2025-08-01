@@ -275,7 +275,7 @@ void RConsole::contextMenuEvent(QContextMenuEvent *e)
     Q_UNUSED(e)
 }
 
-RChart::RChart(Context *context, bool ridesummary) : GcChartWindow(context), context(context), ridesummary(ridesummary)
+RChart::RChart(Context *context, bool ridesummary) : GcChartWindow(context->mainWindow), context(context), ridesummary(ridesummary)
 {
     HelpWhatsThis *helpContents = new HelpWhatsThis(this);
     this->setWhatsThis(helpContents->getWhatsThisText(HelpWhatsThis::Chart_R));

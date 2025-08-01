@@ -31,7 +31,7 @@ class AthleteView : public ChartSpace
 
 public:
     // only mainWindow is used from the provided context in AthleteView & ChartSpace
-    AthleteView(Context *context);
+    AthleteView(MainWindow *mainWindow);
 
     // called once at startup for the bootstrap athlete and sets the 
     // bootstrap as the current athlete, subsequent calls are ignored.

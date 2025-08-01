@@ -41,7 +41,7 @@ public:
 };
 
 VideoWindow::VideoWindow(Context *context)  :
-    GcChartWindow(context), context(context), m_MediaChanged(false), container(nullptr), layoutSelector(NULL)
+    GcChartWindow(context->mainWindow), context(context), m_MediaChanged(false), container(nullptr), layoutSelector(NULL)
 {
     HelpWhatsThis *helpContents = new HelpWhatsThis(this);
     this->setWhatsThis(helpContents->getWhatsThisText(HelpWhatsThis::ChartTrain_VideoPlayer));

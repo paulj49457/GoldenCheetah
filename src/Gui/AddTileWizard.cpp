@@ -36,8 +36,8 @@
 //
 
 // Main wizard - if passed a service name we are in edit mode, not add mode.
-AddTileWizard::AddTileWizard(Context *context, ChartSpace *space, OverviewScope scope, ChartSpaceItem * &added)
-    : QWizard(context->mainWindow), context(context), scope(scope), space(space), added(added)
+AddTileWizard::AddTileWizard(ChartSpace *space, OverviewScope scope, ChartSpaceItem * &added)
+    : QWizard(space->mainWindow), scope(scope), space(space), added(added)
 {
     HelpWhatsThis *help = new HelpWhatsThis(this);
     if (scope & OverviewScope::ANALYSIS) this->setWhatsThis(help->getWhatsThisText(HelpWhatsThis::ChartRides_Overview));
@@ -164,11 +164,11 @@ AddTileConfig::~AddTileConfig()
 {
     // spare the config widget being destroyed
     if (wizard->config) {
+        wizard->added = wizard->item;
         wizard->config->hide();
         main->removeWidget(wizard->config);
         wizard->config->setParent(NULL);
         wizard->config = NULL;
-        wizard->added = wizard->item;
     }
 }
 

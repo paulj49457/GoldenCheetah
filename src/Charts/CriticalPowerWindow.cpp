@@ -49,7 +49,7 @@
 #include <QFileDialog>
 
 CriticalPowerWindow::CriticalPowerWindow(Context *context, bool rangemode) :
-    GcChartWindow(context), _dateRange("{00000000-0000-0000-0000-000000000001}"), context(context), currentRide(NULL), rangemode(rangemode), isfiltered(false), stale(true), useCustom(false), useToToday(false), active(false), hoverCurve(NULL), firstShow(true)
+    GcChartWindow(context->mainWindow), _dateRange("{00000000-0000-0000-0000-000000000001}"), context(context), currentRide(NULL), rangemode(rangemode), isfiltered(false), stale(true), useCustom(false), useToToday(false), active(false), hoverCurve(NULL), firstShow(true)
 {
     //
     // reveal controls widget
@@ -512,9 +512,9 @@ CriticalPowerWindow::CriticalPowerWindow(Context *context, bool rangemode) :
     gridLayout->addWidget(summary, 5, 0, 1, 3);
 
 #ifdef GC_HAVE_MUMODEL
-    addHelper(QString(tr("Motor Unit Model")), new MUWidget(this, context));
+    addHelper(context, QString(tr("Motor Unit Model")), new MUWidget(this, context));
 #endif
-    addHelper(QString(tr("Model")), helper);
+    addHelper(context, QString(tr("Model")), helper);
     GcChartWindow::overlayWidget->move(100,100);
 
     if (rangemode) {

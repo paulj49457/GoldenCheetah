@@ -35,15 +35,49 @@
 
 const int SIDEBAR_DEFAULT_WIDTH=200;
 
-AbstractView::AbstractView(Context *context, GcViewType viewType, const QString& viewsInternalName, const QString& heading) :
-    QWidget(context->tab), context(context), _viewType(viewType), _internalViewName(viewsInternalName),
-    _sidebar(true), _tiled(false), _selected(false), lastHeight(130*dpiYFactor), sidewidth(0),
-    active(false), bottomRequested(false), bottomHideOnIdle(false), perspectiveactive(false),
-    stack(NULL), splitter(NULL), mainSplitter(NULL), 
-    sidebar_(NULL), bottom_(NULL), perspective_(NULL), blank_(NULL),
-    loaded(false)
+// Use for Global views
+AbstractView::AbstractView(MainWindow *mainWindow, const QString& viewsInternalName, const QString& heading) :
+    QWidget(mainWindow), context(nullptr), mainWindow(mainWindow), _internalViewName(viewsInternalName)
+{
+    viewCfgPath = QDir(gcroot).canonicalPath();
+
+    initialise(heading);
+
+    connect(GlobalContext::context(),SIGNAL(configChanged(qint32)), this, SLOT(configChanged(qint32)));
+}
+
+// Used for Context/Athlete based views
+AbstractView::AbstractView(Context *context, const QString& viewsInternalName, const QString& heading) :
+    QWidget(context->tab), context(context), mainWindow(context->mainWindow), _internalViewName(viewsInternalName)
 {
     viewCfgPath = context->athlete->home->config().canonicalPath();
+
+    initialise(heading);
+
+    connect(context,SIGNAL(configChanged(qint32)), this, SLOT(configChanged(qint32)));
+}
+
+void
+AbstractView::initialise(const QString& heading)
+{
+    _sidebar = true;
+    _tiled = false;
+    _selected = false;
+    lastHeight = 130*dpiYFactor;
+    sidewidth = 0;
+    active = false;
+    bottomRequested = false;
+    bottomHideOnIdle = false;
+    perspectiveactive = false;
+    stack = NULL;
+    splitter = NULL;
+    mainSplitter = NULL; 
+    sidebar_ = NULL;
+    bottom_ = NULL;
+    perspective_ = NULL;
+    blank_ = NULL;
+    loaded = false;
+
     defaultAppearance= GSettings::defaultAppearanceSettings();
 
     // setup the basic widget
@@ -79,7 +113,6 @@ AbstractView::AbstractView(Context *context, GcViewType viewType, const QString&
     anim = new QPropertyAnimation(mainSplitter, "hpos");
 
     connect(splitter,SIGNAL(splitterMoved(int,int)), this, SLOT(splitterMoved(int,int)));
-    connect(context,SIGNAL(configChanged(qint32)), this, SLOT(configChanged(qint32)));
     connect(&IdleTimer::getInstance(), SIGNAL(userIdle()), this, SLOT(onIdle()));
     connect(&IdleTimer::getInstance(), SIGNAL(userActive()), this, SLOT(onActive()));
 }
@@ -113,8 +146,11 @@ AbstractView::splitterMoved(int pos,int)
     sidewidth = splitter->sizes()[0];
 
     // we now have splitter settings for each view
-    QString setting = QString("%1/%2").arg(GC_SETTINGS_SPLITTER_SIZES).arg(static_cast<std::underlying_type_t<GcViewType>>(_viewType));
-    appsettings->setCValue(context->athlete->cyclist, setting, splitter->saveState());
+
+    if (context != nullptr) {
+        QString setting = QString("%1/%2").arg(GC_SETTINGS_SPLITTER_SIZES).arg(static_cast<std::underlying_type_t<GcViewType>>(viewType()));
+        appsettings->setCValue(context->athlete->cyclist, setting, splitter->saveState());
+    }
 
     notifyViewSplitterMoved();
 }
@@ -154,7 +190,7 @@ AbstractView::notifyViewStateRestored()
 {
     // lets select the first ride if it has not been set,
     // currently required to use DataFilter in any view.
-    if (context->ride == nullptr) {
+    if (context != nullptr && context->ride == nullptr) {
 
         // lets select the first ride
         QDateTime now = QDateTime::currentDateTime();
@@ -378,7 +414,7 @@ AbstractView::restoreState(bool useDefault)
         // layout file (pre-version 3.6) - will get a single perspective,
         // renamed as "Legacy" and prepended to default perspectives,
         // except when useDefault is requested
-        if (!finfo.exists() && !useDefault) {
+        if (context != nullptr && !finfo.exists() && !useDefault) {
             filename = context->athlete->home->config().canonicalPath() + "/" + _internalViewName + "-layout.xml";
 
             QFile file(filename);
@@ -397,13 +433,14 @@ AbstractView::restoreState(bool useDefault)
                 QXmlInputSource source;
                 source.setData(content);
                 QXmlSimpleReader xmlReader;
-                ViewParser handler(context, _viewType, useDefault);
-                xmlReader.setContentHandler(&handler);
-                xmlReader.setErrorHandler(&handler);
+                ViewParser* handler = getViewParser(useDefault);
+                xmlReader.setContentHandler(handler);
+                xmlReader.setErrorHandler(handler);
 
                 // parse and instantiate the charts
                 xmlReader.parse(source);
-                restored = handler.perspectives;
+                restored = handler->perspectives;
+                delete handler;
 
                 setUpdatesEnabled(true);
             }
@@ -432,13 +469,14 @@ AbstractView::restoreState(bool useDefault)
         QXmlInputSource source;
         source.setData(content);
         QXmlSimpleReader xmlReader;
-        ViewParser handler(context, _viewType, useDefault);
-        xmlReader.setContentHandler(&handler);
-        xmlReader.setErrorHandler(&handler);
+        ViewParser* handler = getViewParser(useDefault);
+        xmlReader.setContentHandler(handler);
+        xmlReader.setErrorHandler(handler);
 
         // parse and instantiate the charts
         xmlReader.parse(source);
-        restored += handler.perspectives;
+        restored += handler->perspectives;
+        delete handler;
 
         setUpdatesEnabled(true);
     }
@@ -448,7 +486,7 @@ AbstractView::restoreState(bool useDefault)
         if (legacy) restored[0]->title_ = "Legacy";
 
     } else { // MUST have at least one perspective
-        restored << new Perspective(context, "Empty", _viewType);
+        restored << getViewsPerspective("empty");
     }
 
     // initialise them
@@ -470,9 +508,12 @@ AbstractView::appendPerspective(Perspective *page)
 }
 
 bool
-AbstractView::importPerspective(QString filename)
+AbstractView::importPerspective(const QString& filename)
 {
-    Perspective *newone = Perspective::fromFile(context, filename, _viewType);
+    ViewParser* viewParser = getViewParser(false);
+    Perspective *newone = Perspective::fromFile(viewParser, filename, viewType());
+    delete viewParser;
+
     if (newone) {
         appendPerspective(newone);
         return true;
@@ -488,9 +529,9 @@ AbstractView::exportPerspective(Perspective *p, QString filename)
 }
 
 Perspective *
-AbstractView::addPerspective(QString name)
+AbstractView::addPerspective(const QString& name)
 {
-    Perspective *page = new Perspective(context, name, _viewType);
+    Perspective *page = getViewsPerspective(name);
 
     notifyViewPerspectiveAdded(page);
 
@@ -582,8 +623,8 @@ AbstractView::setPages(QStackedWidget *pages)
     splitter->setCollapsible(index, false);
 
     // restore sizes
-    QString setting = QString("%1/%2").arg(GC_SETTINGS_SPLITTER_SIZES).arg(static_cast<std::underlying_type_t<GcViewType>>(_viewType));
-    QVariant splitterSizes = appsettings->cvalue(context->athlete->cyclist, setting); 
+    QString setting = QString("%1/%2").arg(GC_SETTINGS_SPLITTER_SIZES).arg(static_cast<std::underlying_type_t<GcViewType>>(viewType()));
+    QVariant splitterSizes = (context != nullptr) ? appsettings->cvalue(context->athlete->cyclist, setting) : QVariant();
 
     // new (3.1) mechanism 
     if (splitterSizes.toByteArray().size() > 1 ) {
@@ -591,7 +632,7 @@ AbstractView::setPages(QStackedWidget *pages)
     } else {
 
         // use old (v3 or earlier) mechanism
-        QVariant splitterSizes = appsettings->cvalue(context->athlete->cyclist, GC_SETTINGS_SPLITTER_SIZES); 
+        QVariant splitterSizes = (context != nullptr) ? appsettings->cvalue(context->athlete->cyclist, GC_SETTINGS_SPLITTER_SIZES) : QVariant();
         if (splitterSizes.toByteArray().size() > 1 ) {
 
             splitter->restoreState(splitterSizes.toByteArray());
@@ -602,7 +643,7 @@ AbstractView::setPages(QStackedWidget *pages)
             QList<int> sizes;
 
             sizes.append(SIDEBAR_DEFAULT_WIDTH);
-            sizes.append(context->mainWindow->width()-SIDEBAR_DEFAULT_WIDTH);
+            sizes.append(mainWindow->width()-SIDEBAR_DEFAULT_WIDTH);
             splitter->setSizes(sizes);
             
         }
@@ -623,7 +664,7 @@ void
 AbstractView::dragEvent(bool x)
 {
     setBottomRequested(x);
-    context->mainWindow->setToolButtons(); // toolbuttons reflect show/hide status
+    mainWindow->setToolButtons(); // toolbuttons reflect show/hide status
 }
 
 // hide and show bottom - but with a little animation ...
@@ -677,11 +718,12 @@ AbstractView::setBlank(BlankStatePage *blank)
 
     // and when stuff happens lets check
     connect(blank, SIGNAL(closeClicked()), this, SLOT(checkBlank()));
-    connect(context, SIGNAL(rideAdded(RideItem*)), this, SLOT(checkBlank()));
-    connect(context, SIGNAL(rideDeleted(RideItem*)), this, SLOT(checkBlank()));
-    connect(context, SIGNAL(configChanged(qint32)), this, SLOT(checkBlank()));
-    connect(trainDB, SIGNAL(dataChanged()), this, SLOT(checkBlank()));
-
+    if (context != nullptr) {
+        connect(context, SIGNAL(rideAdded(RideItem*)), this, SLOT(checkBlank()));
+        connect(context, SIGNAL(rideDeleted(RideItem*)), this, SLOT(checkBlank()));
+        connect(context, SIGNAL(configChanged(qint32)), this, SLOT(checkBlank()));
+        connect(trainDB, SIGNAL(dataChanged()), this, SLOT(checkBlank()));
+    }
 }
 
 
@@ -692,7 +734,7 @@ AbstractView::sidebarChanged()
     if (sidebar_ == NULL) return;
 
     // tell main window qmenu we changed
-    if (context->mainWindow->init) context->mainWindow->showhideSidebar->setChecked(_sidebar);
+    if (mainWindow->init) mainWindow->showhideSidebar->setChecked(_sidebar);
 
     if (sidebarEnabled()) {
 
@@ -701,14 +743,14 @@ AbstractView::sidebarChanged()
         sidebar_->show();
 
         // Restore sizes
-        QString setting = QString("%1/%2").arg(GC_SETTINGS_SPLITTER_SIZES).arg(static_cast<std::underlying_type_t<GcViewType>>(_viewType));
-        QVariant splitterSizes = appsettings->cvalue(context->athlete->cyclist, setting);
+        QString setting = QString("%1/%2").arg(GC_SETTINGS_SPLITTER_SIZES).arg(static_cast<std::underlying_type_t<GcViewType>>(viewType()));
+        QVariant splitterSizes = (context != nullptr) ? appsettings->cvalue(context->athlete->cyclist, setting) : QVariant();
         if (splitterSizes.toByteArray().size() > 1 ) {
             splitter->restoreState(splitterSizes.toByteArray());
         } else {
 
             // use old (v3 or earlier) mechanism
-            QVariant splitterSizes = appsettings->cvalue(context->athlete->cyclist, GC_SETTINGS_SPLITTER_SIZES);
+            QVariant splitterSizes = (context != nullptr) ? appsettings->cvalue(context->athlete->cyclist, GC_SETTINGS_SPLITTER_SIZES) : QVariant();
             if (splitterSizes.toByteArray().size() > 1 ) {
 
                 splitter->restoreState(splitterSizes.toByteArray());
@@ -719,7 +761,7 @@ AbstractView::sidebarChanged()
                 QList<int> sizes;
 
                 sizes.append(SIDEBAR_DEFAULT_WIDTH);
-                sizes.append(context->mainWindow->width()-SIDEBAR_DEFAULT_WIDTH);
+                sizes.append(mainWindow->width()-SIDEBAR_DEFAULT_WIDTH);
                 splitter->setSizes(sizes);
             }
         }
@@ -800,9 +842,11 @@ AbstractView::perspectiveSelected(int index)
         _tiled = perspective_->currentStyle == 2 ? true : false;
 
         // set properties on the perspective as they propagate to charts
-        RideItem *notconst = (RideItem*)context->currentRideItem();
-        perspective_->setProperty("ride", QVariant::fromValue<RideItem*>(notconst));
-        perspective_->setProperty("dateRange", QVariant::fromValue<DateRange>(context->currentDateRange()));
+        if (context) {
+            RideItem *notconst = (RideItem*) context->currentRideItem();
+            perspective_->setProperty("ride", QVariant::fromValue<RideItem*>(notconst));
+            perspective_->setProperty("dateRange", QVariant::fromValue<DateRange>(context->currentDateRange()));
+        }
 
         setUpdatesEnabled(true);
     }
@@ -822,7 +866,7 @@ AbstractView::selectionChanged()
     if (isSelected()) {
 
         // makes sure menu now reflects our setting
-        context->mainWindow->showhideSidebar->setChecked(_sidebar);
+        mainWindow->showhideSidebar->setChecked(_sidebar);
 
         // or do we need to show blankness?
         if (isBlank() && blank_ && perspective_ && blank_->canShow()) {
@@ -990,7 +1034,7 @@ bool ViewParser::startElement( const QString&, const QString&, const QString &na
         }
 
         // we need a new perspective for this view type
-        page = new Perspective(context, name, typetouse);
+        page = getViewParsersPerspective(name);
         page->setExpression(expression);
         page->setTrainSwitch(trainswitch);
         perspectives.append(page);
@@ -1009,7 +1053,7 @@ bool ViewParser::startElement( const QString&, const QString&, const QString &na
 
         // new chart
         type = static_cast<GcWinID>(typeStr.toInt());
-        chart = GcWindowRegistry::newGcWindow(type, context);
+        chart = GcWindowRegistry::newGcWindow(type, mainWindow, context);
         if (chart != NULL) {
             chart->setProperty("title", QVariant(title));
         }

@@ -30,7 +30,7 @@
 #include <QEvent>
 #include <QPropertyAnimation>
 
-class Context;
+class MainWindow;
 class ChartBarItem;
 class GcLabel;
 class ButtonBar;
@@ -43,7 +43,7 @@ class ChartBar : public QWidget
 
 public:
 
-    ChartBar(Context *context);
+    ChartBar(MainWindow *mainWindow);
     ~ChartBar();
 
 
@@ -58,6 +58,7 @@ public slots:
     void removeWidget(int);
     void setText(int index, QString);
     void setColor(int index, QColor);
+    void setWarning(int index, bool warning);
     void setCurrentIndex(int index);
     void scrollLeft();
     void scrollRight();
@@ -82,7 +83,7 @@ private:
 
     void paintBackground(QPaintEvent *);
 
-    Context *context;
+    MainWindow *mainWindow;
 
     ButtonBar *buttonBar;
     QPushButton *left, *right; // scrollers, hidden if menu fits
@@ -125,12 +126,12 @@ class ChartBarItem : public QWidget
         ChartBarItem(ChartBar *parent);
         void setText(QString _text) { text = _text; }
         void setColor(QColor _color) { color = _color; update(); }
+        void setWarning(bool _warning) { warning = _warning; update(); };
         void setChecked(bool _checked) { checked = _checked; update(); }
         bool isChecked() { return checked; }
         void setWidth(int x) { setFixedWidth(x); }
         void setHighlighted(bool x) { highlighted = x; }
         bool ishighlighted() const { return highlighted; }
-        void setRed(bool x) { red = x; }
 
         QString text;
     signals:
@@ -152,9 +153,9 @@ class ChartBarItem : public QWidget
         ChartBarItem *dragging;
 
         QColor color; // background when selected
+        bool warning; // override text color
         bool checked;
         bool highlighted;
-        bool red;
 
         QPainterPath triangle, hotspot;
 };

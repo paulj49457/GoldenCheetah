@@ -25,7 +25,7 @@
 #include "Context.h"
 #include "Colors.h"
 
-GcOverlayWidget::GcOverlayWidget(Context *context, QWidget *parent) : QWidget(parent), context(context)
+GcOverlayWidget::GcOverlayWidget(Context *context, QWidget *parent) : QWidget(parent)
 {
     // left / right scroller icon
     static QIcon leftIcon = iconFromPNG(":images/mac/left.png");

@@ -189,7 +189,7 @@ bool GcWindow::gripped() const
     return _gripped;
 }
 
-GcWindow::GcWindow(Context *context) : QFrame(context->mainWindow)
+GcWindow::GcWindow(QWidget *parent) : QFrame(parent)
 {
     qRegisterMetaType<QWidget*>("controls");
     qRegisterMetaType<RideItem*>("ride");
@@ -199,7 +199,6 @@ GcWindow::GcWindow(Context *context) : QFrame(context->mainWindow)
     qRegisterMetaType<Perspective*>("perspective");
     nomenu = false;
     revealed = false;
-    setParent(context->mainWindow);
     setControls(NULL);
     setRideItem(NULL);
     setPerspective(NULL);
@@ -674,7 +673,7 @@ GcWindow::_closeWindow()
     emit closeWindow(this);
 }
 
-GcChartWindow::GcChartWindow(Context *context) : GcWindow(context), context(context)
+GcChartWindow::GcChartWindow(QWidget *parent) : GcWindow(parent)
 {
     //
     // Default layout
@@ -831,7 +830,7 @@ GcChartWindow::setControls(QWidget *x)
     menu->addAction(tr("Export Chart ..."), this, SLOT(saveChart()));
     menu->addAction(tr("Export Chart Image..."), this, SLOT(saveImage()));
 #ifdef GC_HAS_CLOUD_DB
-    menu->addAction(tr("Upload Chart..."), this, SLOT(exportChartToCloudDB()));
+    menu->addAction(tr("Upload Chart..."), GlobalContext::context(), &GlobalContext::requestChartExportToCloudDB);
 #endif
     menu->addAction(tr("Remove Chart"), this, SLOT(_closeWindow()));
 }
@@ -866,7 +865,7 @@ void GcChartWindow:: hideRevealControls()
 
 
 void 
-GcChartWindow::addHelper(QString name, QWidget *widget)
+GcChartWindow::addHelper(Context *context, QString name, QWidget *widget)
 {
     if (!overlayWidget) {
         overlayWidget = new GcOverlayWidget(context, _mainWidget);
@@ -1063,12 +1062,12 @@ GcChartWindow::chartPropertiesFromString(QString contents) {
 
 #if GC_HAS_CLOUD_DB
 void
-GcChartWindow::exportChartToCloudDB()
+GcChartWindow::exportChartToCloudDB(const QString& cyclist)
 {
 
     // check for CloudDB T&C acceptance
-    if (!(appsettings->cvalue(context->athlete->cyclist, GC_CLOUDDB_TC_ACCEPTANCE, false).toBool())) {
-        CloudDBAcceptConditionsDialog acceptDialog(context->athlete->cyclist);
+    if (!(appsettings->cvalue(cyclist, GC_CLOUDDB_TC_ACCEPTANCE, false).toBool())) {
+        CloudDBAcceptConditionsDialog acceptDialog(cyclist);
         acceptDialog.setModal(true);
         if (acceptDialog.exec() == QDialog::Rejected) {
             return;
@@ -1108,9 +1107,9 @@ GcChartWindow::exportChartToCloudDB()
          chart.ChartType.toInt() == GcWindowTypes::DateRangeSummary ||
          chart.ChartType.toInt() == GcWindowTypes::GoogleMap ||
          chart.ChartType.toInt() == GcWindowTypes::BingMap ||
-         chart.ChartType.toInt() == GcWindowTypes::RideMapWindow )
+         chart.ChartType.toInt() == GcWindowTypes::RideMapWindow ||
+         chart.ChartType.toInt() == GcWindowTypes::EquipmentOverview )
     {
-
         QMessageBox::information(0, tr("Upload not possible"), tr("Standard charts without configuration cannot be uploaded to the GoldenCheetah Cloud."));
         return;
     }
@@ -1141,12 +1140,12 @@ GcChartWindow::exportChartToCloudDB()
     picture.save(&buffer, "PNG"); // writes pixmap into bytes in PNG format (a bit larger than JPG - but much better in Quality when importing)
     buffer.close();
 
-    chart.Header.CreatorId = appsettings->cvalue(context->athlete->cyclist, GC_ATHLETE_ID, "").toString();
+    chart.Header.CreatorId = appsettings->cvalue(cyclist, GC_ATHLETE_ID, "").toString();
     chart.Header.Curated = false;
     chart.Header.Deleted = false;
 
     // now complete the chart with for the user manually added fields
-    CloudDBChartObjectDialog dialog(chart, context->athlete->cyclist);
+    CloudDBChartObjectDialog dialog(chart, cyclist);
     if (dialog.exec() == QDialog::Accepted) {
         CloudDBChartClient c;
         if (c.postChart(dialog.getChart())) {

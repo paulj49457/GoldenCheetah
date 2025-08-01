@@ -20,9 +20,10 @@
 #include "SpinScanPlotWindow.h"
 #include "Context.h"
 #include "HelpWhatsThis.h"
+#include "MainWindow.h"
 
 SpinScanPlotWindow::SpinScanPlotWindow(Context *context) :
-    GcChartWindow(context), context(context), active(false)
+    GcChartWindow(context->mainWindow), context(context), active(false)
 {
     HelpWhatsThis *helpContents = new HelpWhatsThis(this);
     this->setWhatsThis(helpContents->getWhatsThisText(HelpWhatsThis::ChartTrain_PedalStroke));

@@ -54,7 +54,7 @@
 #endif
 #include "PlanningWindow.h"
 #ifdef GC_HAVE_OVERVIEW
-#include "Overview.h"
+#include "OverviewWindows.h"
 #endif
 #include "UserChartWindow.h"
 #include "HtmlChart.h"
@@ -115,6 +115,7 @@ GcWindowRegistry::initialize()
     { GcViewType::VIEW_TRENDS|GcViewType::VIEW_PLAN, tr("Calendar"),GcWindowTypes::Calendar },
     { GcViewType::VIEW_PLAN, tr("Agenda"),GcWindowTypes::Agenda },
     { GcViewType::VIEW_PLAN, tr("Plan Adherence"),GcWindowTypes::PlanAdherence },
+    { GcViewType::VIEW_EQUIPMENT, tr("Equipment Overview"),GcWindowTypes::EquipmentOverview },
     { GcViewType::NO_VIEW_SET, "", GcWindowTypes::None }};
   // initialize the global registry
   GcWindows = GcWindowsInit;
@@ -166,7 +167,7 @@ GcWindowRegistry::relevanceForId(GcWinID id)
 
 // instantiate a new window
 GcChartWindow *
-GcWindowRegistry::newGcWindow(GcWinID id, Context *context)
+GcWindowRegistry::newGcWindow(GcWinID id, MainWindow *mainWindow, Context *context)
 {
     GcChartWindow *returning = NULL;
 
@@ -180,15 +181,15 @@ GcWindowRegistry::newGcWindow(GcWinID id, Context *context)
     case GcWindowTypes::RConsole: returning = new RChart(context, true); break;
     case GcWindowTypes::RConsoleSeason: returning = new RChart(context, false); break;
 #else
-    case GcWindowTypes::RConsole: returning = new GcChartWindow(context); break;
-    case GcWindowTypes::RConsoleSeason: returning = new GcChartWindow(context); break;
+    case GcWindowTypes::RConsole: returning = new GcChartWindow(mainWindow); break;
+    case GcWindowTypes::RConsoleSeason: returning = new GcChartWindow(mainWindow); break;
 #endif
 #ifdef GC_WANT_PYTHON
     case GcWindowTypes::Python: returning = new PythonChart(context, true); break;
     case GcWindowTypes::PythonSeason: returning = new PythonChart(context, false); break;
 #else
     case GcWindowTypes::PythonSeason:
-    case GcWindowTypes::Python: returning = new GcChartWindow(context); break;
+    case GcWindowTypes::Python: returning = new GcChartWindow(mainWindow); break;
 #endif
     case GcWindowTypes::Distribution: returning = new HistogramWindow(context, true); break;
     case GcWindowTypes::PerformanceManager: 
@@ -209,7 +210,7 @@ GcWindowRegistry::newGcWindow(GcWinID id, Context *context)
             }
             break;
     case GcWindowTypes::LTM: returning = new LTMWindow(context); break;
-    case GcWindowTypes::Model: returning = new GcChartWindow(context); break;
+    case GcWindowTypes::Model: returning = new GcChartWindow(mainWindow); break;
     case GcWindowTypes::PfPv: returning = new PfPvWindow(context); break;
     case GcWindowTypes::HrPw: returning = new HrPwWindow(context); break;
     case GcWindowTypes::RideEditor: returning = NULL; break;
@@ -217,19 +218,19 @@ GcWindowRegistry::newGcWindow(GcWinID id, Context *context)
     case GcWindowTypes::TreeMap: returning = new TreeMapWindow(context); break;
     case GcWindowTypes::WeeklySummary: returning = NULL; break; // deprecated
 #ifdef GC_VIDEO_NONE
-    case GcWindowTypes::VideoPlayer: returning = new GcChartWindow(context); break;
+    case GcWindowTypes::VideoPlayer: returning = new GcChartWindow(mainWindow); break;
 #else
     case GcWindowTypes::VideoPlayer: returning = new VideoWindow(context); break;
 #endif
     case GcWindowTypes::DialWindow: returning = new DialWindow(context); break;
     case GcWindowTypes::MetadataWindow: returning = new MetadataWindow(context); break;
-    case GcWindowTypes::RealtimeControls: returning = new GcChartWindow(context); break;
+    case GcWindowTypes::RealtimeControls: returning = new GcChartWindow(mainWindow); break;
     case GcWindowTypes::RealtimePlot: returning = new RealtimePlotWindow(context); break;
     case GcWindowTypes::SpinScanPlot: returning = new SpinScanPlotWindow(context); break;
     case GcWindowTypes::WorkoutPlot: returning = new WorkoutPlotWindow(context); break;
     case GcWindowTypes::MapWindow:
     case GcWindowTypes::StreetViewWindow:
-        returning = new GcChartWindow(context); break;
+        returning = new GcChartWindow(mainWindow); break;
     // old maps (GoogleMap and BingMap) replaced by RideMapWindow
     case GcWindowTypes::GoogleMap: id=GcWindowTypes::RideMapWindow; returning = new RideMapWindow(context, RideMapWindow::GOOGLE); break; // new GoogleMapControl(context);
     case GcWindowTypes::BingMap: id=GcWindowTypes::RideMapWindow; returning = new RideMapWindow(context, RideMapWindow::OSM); break; //returning = new BingMap(context);
@@ -243,38 +244,48 @@ GcWindowRegistry::newGcWindow(GcWinID id, Context *context)
     case GcWindowTypes::LiveMapWebPageWindow: returning = new LiveMapWebPageWindow(context); break;
     case GcWindowTypes::HtmlTraining: returning = new HtmlChart(context); break;
     case GcWindowTypes::ElevationChart: returning = new ElevationChartWindow(context); break;
-    case GcWindowTypes::RouteSegment: returning = new GcChartWindow(context); break; // Deprecated
+    case GcWindowTypes::RouteSegment: returning = new GcChartWindow(mainWindow); break; // Deprecated
 
     // summary and old ride summary charts now replaced with an Overview - note id gets reset
     case GcWindowTypes::Summary:
     case GcWindowTypes::RideSummary:
-    case GcWindowTypes::Overview: returning = new OverviewWindow(context, OverviewScope::ANALYSIS); if (id != GcWindowTypes::Overview) { id=GcWindowTypes::Overview; static_cast<OverviewWindow*>(returning)->setConfiguration(""); } break;
+    case GcWindowTypes::Overview: returning = new AnalysisOverviewWindow(context); if (id != GcWindowTypes::Overview) { id=GcWindowTypes::Overview; static_cast<OverviewWindow*>(returning)->setConfiguration(""); } break;
 
     // blank analysis overview - note id gets reset
-    case GcWindowTypes::OverviewAnalysisBlank: returning = new OverviewWindow(context, OverviewScope::ANALYSIS, true); id=GcWindowTypes::Overview; break;
+    case GcWindowTypes::OverviewAnalysisBlank: returning = new AnalysisOverviewWindow(context, true); id=GcWindowTypes::Overview; break;
 
     // old summary now gets a trends overview - note id gets reset
     case GcWindowTypes::DateRangeSummary: // deprecated so now replace with overview
-    case GcWindowTypes::OverviewTrends: returning = new OverviewWindow(context, OverviewScope::TRENDS); if (id != GcWindowTypes::OverviewTrends) { id=GcWindowTypes::OverviewTrends; static_cast<OverviewWindow*>(returning)->setConfiguration(""); } break;
+    case GcWindowTypes::OverviewTrends: returning = new TrendsOverviewWindow(context); if (id != GcWindowTypes::OverviewTrends) { id=GcWindowTypes::OverviewTrends; static_cast<OverviewWindow*>(returning)->setConfiguration(""); } break;
 
     // blank trends overview - note id gets reset
-    case GcWindowTypes::OverviewTrendsBlank: returning = new OverviewWindow(context, OverviewScope::TRENDS, true); id=GcWindowTypes::OverviewTrends; break;
+    case GcWindowTypes::OverviewTrendsBlank: returning = new TrendsOverviewWindow(context, true); id=GcWindowTypes::OverviewTrends; break;
 
     // plan specific charts - note id gets reset for overview & blank
-    case GcWindowTypes::OverviewPlan: returning = new OverviewWindow(context, OverviewScope::PLAN); if (id != GcWindowTypes::OverviewPlan) { id=GcWindowTypes::OverviewPlan; static_cast<OverviewWindow*>(returning)->setConfiguration(""); } break;
-    case GcWindowTypes::OverviewPlanBlank: returning = new OverviewWindow(context, OverviewScope::PLAN, true); id=GcWindowTypes::OverviewPlan; break;
+    case GcWindowTypes::OverviewPlan: returning = new PlanOverviewWindow(context); if (id != GcWindowTypes::OverviewPlan) { id=GcWindowTypes::OverviewPlan; static_cast<OverviewWindow*>(returning)->setConfiguration(""); } break;
+    case GcWindowTypes::OverviewPlanBlank: returning = new PlanOverviewWindow(context, true); id=GcWindowTypes::OverviewPlan; break;
     case GcWindowTypes::UserPlan: returning = new UserChartWindow(context, true); break;
 
     case GcWindowTypes::SeasonPlan: returning = new PlanningWindow(context); break;
     case GcWindowTypes::UserAnalysis: returning = new UserChartWindow(context, false); break;
     case GcWindowTypes::UserTrends: returning = new UserChartWindow(context, true); break;
-
     case GcWindowTypes::Diary:
     case GcWindowTypes::Calendar: returning = new CalendarWindow(context); break;
     case GcWindowTypes::Agenda: returning = new AgendaWindow(context); break;
     case GcWindowTypes::PlanAdherence: returning = new PlanAdherenceWindow(context); break;
+    case GcWindowTypes::EquipmentOverview: returning = new EquipmentOverviewWindow(mainWindow); break;
     default: return NULL; break;
     }
-    if (returning) returning->setProperty("type", QVariant::fromValue<GcWinID>(id));
+
+    if (returning) {
+
+        returning->setProperty("type", QVariant::fromValue<GcWinID>(id));
+
+        // before we do anything, we need to set the perspective, in case
+        // the chart uses it to decide something - apologies for the convoluted
+        // method to determine the perspective, but its rare to use this outside
+        // the context of a chart or a view
+        returning->setProperty("perspective", QVariant::fromValue<Perspective*>(mainWindow->getCurrentView()->page()));
+    }
     return returning;
 }

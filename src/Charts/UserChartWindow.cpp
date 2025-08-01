@@ -35,7 +35,7 @@
 #include <QScrollArea>
 #include <QDialog>
 
-UserChartWindow::UserChartWindow(Context *context, bool rangemode) : GcChartWindow(context), context(context), rangemode(rangemode), stale(true), last(NULL)
+UserChartWindow::UserChartWindow(Context *context, bool rangemode) : GcChartWindow(context->mainWindow), context(context), rangemode(rangemode), stale(true), last(NULL)
 {
     HelpWhatsThis *helpContents = new HelpWhatsThis(this);
     this->setWhatsThis(helpContents->getWhatsThisText(HelpWhatsThis::Chart_User));

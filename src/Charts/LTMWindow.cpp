@@ -57,7 +57,7 @@
 #include <qwt_plot_marker.h>
 
 LTMWindow::LTMWindow(Context *context) :
-            GcChartWindow(context), context(context), dirty(true), stackDirty(true), compareDirty(true), firstshow(true)
+            GcChartWindow(context->mainWindow), context(context), dirty(true), stackDirty(true), compareDirty(true), firstshow(true)
 {
     useToToday = useCustom = false;
     plotted = DateRange(QDate(01,01,01), QDate(01,01,01));
@@ -244,7 +244,7 @@ LTMWindow::LTMWindow(Context *context) :
 
     // the banister overlay
     QWidget *ban=new QWidget(this);
-    addHelper(tr("Banister Model"), ban);
+    addHelper(context, tr("Banister Model"), ban);
 
     QGridLayout *bang= new QGridLayout(ban);
     bang->setColumnStretch(0, 40);

@@ -79,7 +79,7 @@
 #define USE_RLV
 #endif
 
-TrainSidebar::TrainSidebar(Context *context) : GcWindow(context), context(context),
+TrainSidebar::TrainSidebar(Context *context) : GcWindow(context->mainWindow), context(context),
     bicycle(context), rtData(context, 0, 0, 0)
 {
     // Athlete

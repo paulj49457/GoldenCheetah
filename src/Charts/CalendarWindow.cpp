@@ -288,7 +288,7 @@ LinkDialog::updateCandidates
 // CalendarWindow
 
 CalendarWindow::CalendarWindow(Context *context)
-: GcChartWindow(context), context(context)
+: GcChartWindow(context->mainWindow), context(context)
 {
     mkControls();
 

@@ -41,15 +41,8 @@ static const int gl_progress_width = ROWHEIGHT/2;
 static const int gl_button_height = ROWHEIGHT*1.5;
 static const int gl_button_width = ROWHEIGHT*5;
 
-AthleteView::AthleteView(Context *context) : ChartSpace(context, OverviewScope::ATHLETES, NULL), mainWindow_(context->mainWindow)
+AthleteView::AthleteView(MainWindow *mainWindow) : ChartSpace(nullptr, mainWindow, OverviewScope::ATHLETES, NULL), mainWindow_(mainWindow)
 {
-    // AthleteView most likely has a lifetime greater than the athlete's context, so ensure
-    // we do not register signals, events or hold this context pointer...
-
-    // remove the athlete context specific configChanged signal registration created by ChartSpace, and
-    // replace it with a global configChanged signal registration instead 
-    disconnect(context, &Context::configChanged, this, &ChartSpace::configChanged);
-    connect(GlobalContext::context(), &GlobalContext::configChanged, this, &ChartSpace::configChanged);
 
     // the athlete's context provided to this constructor must not be used!
     // it is set to null to ensure misuse is detected, and prevent unintended behaviour

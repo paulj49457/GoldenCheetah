@@ -32,7 +32,7 @@
 // tooltip
 
 HrPwWindow::HrPwWindow(Context *context) :
-     GcChartWindow(context), context(context), current(NULL)
+     GcChartWindow(context->mainWindow), context(context), current(NULL)
 {
     setControls(NULL);
 

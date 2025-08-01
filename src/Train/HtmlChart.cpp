@@ -22,6 +22,7 @@
 #include "Colors.h"
 #include "AbstractView.h"
 #include "HelpWhatsThis.h"
+#include "MainWindow.h"
 
 #include <QDebug>
 #include <QTimer>
@@ -55,7 +56,8 @@ QString HtmlChartBridge::getChartConfig() const
     return "{}";
 }
 
-HtmlChart::HtmlChart(Context *context) : GcChartWindow(context), context(context), m_webChannel(nullptr)
+HtmlChart::HtmlChart(Context *context) :
+    GcChartWindow(context->mainWindow), context(context), m_webChannel(nullptr)
 {
     m_savedTopMargin = 0;
 

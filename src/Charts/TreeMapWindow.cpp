@@ -40,7 +40,7 @@
 #include <qwt_plot_marker.h>
 
 TreeMapWindow::TreeMapWindow(Context *context) :
-            GcChartWindow(context), context(context), active(false), dirty(true), useCustom(false), useToToday(false)
+            GcChartWindow(context->mainWindow), context(context), active(false), dirty(true), useCustom(false), useToToday(false)
 {
     // the controls
     QWidget *c = new QWidget;

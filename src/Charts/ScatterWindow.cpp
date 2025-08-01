@@ -91,7 +91,7 @@ ScatterWindow::addrStandardChannels(QxtStringSpinBox *box)
 }
 
 ScatterWindow::ScatterWindow(Context *context) :
-    GcChartWindow(context), context(context), ride(NULL), stale(false), current(NULL)
+    GcChartWindow(context->mainWindow), context(context), ride(NULL), stale(false), current(NULL)
 {
     //
     // reveal controls widget
@@ -206,7 +206,7 @@ ScatterWindow::ScatterWindow(Context *context) :
     QWidget *helper = new QWidget(this);
     helper->setAutoFillBackground(true);
 
-    addHelper(QString(tr("Trend")), helper);
+    addHelper(context, QString(tr("Trend")), helper);
     helperWidget()->hide();
 
     // now connect up the widgets
