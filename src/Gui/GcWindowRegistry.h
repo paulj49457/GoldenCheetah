@@ -78,17 +78,19 @@ enum gcwinid {
         OverviewAnalysisBlank=49,
         OverviewTrendsBlank=50,
         ElevationChart=51,
-        Calendar=52
+        Calendar=52,
+        EquipmentOverview=99 // While in development, ensure it isn't changed when new charts are added.
 };
 };
 typedef enum GcWindowTypes::gcwinid GcWinID;
 Q_DECLARE_METATYPE(GcWinID)
 
 // when declaring a window, what view is it relevant for?
-#define VIEW_TRAIN    0x01
-#define VIEW_ANALYSIS 0x02
-#define VIEW_DIARY    0x04
-#define VIEW_TRENDS   0x08
+#define VIEW_TRAIN      0x01
+#define VIEW_ANALYSIS   0x02
+#define VIEW_DIARY      0x04
+#define VIEW_TRENDS     0x08
+#define VIEW_EQUIPMENT  0x80 // While in development, ensure it isn't changed when new views are added.
 
 class GcChartWindow;
 class GcWindowRegistry {
