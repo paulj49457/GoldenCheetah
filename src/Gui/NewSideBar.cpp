@@ -19,6 +19,7 @@
 #include "Context.h"
 #include "NewSideBar.h"
 #include "Colors.h"
+#include "EquipmentCalculator.h"
 
 static constexpr int gl_itemwidth = 70;
 static constexpr int gl_itemheight = 50;
@@ -78,7 +79,12 @@ GcSideBarBtnId
 NewSideBar::addItem(QImage icon, const QString& name, GcSideBarBtnId id, const QString& whatsThisText)
 {
     if (id != GcSideBarBtnId::NO_BUTTON_SET) {
-        NewSideBarItem *add = new NewSideBarItem(this, id, icon, name);
+        NewSideBarItem *add;
+        if (id == GcSideBarBtnId::EQUIPMENT_BTN) {
+            add = new NewEqSideBarItem(this, id, icon, name);
+        } else {
+            add = new NewSideBarItem(this, id, icon, name);
+        }
         if (!whatsThisText.isEmpty()) add->setWhatsThis(whatsThisText);
         layout->addWidget(add);
         items.insert(id, add);
@@ -293,4 +299,38 @@ NewSideBarItem::paintEvent(QPaintEvent *)
     painter.setFont(f);
     painter.setPen(pen);
     painter.drawText(QRect(5*dpiXFactor,24*dpiYFactor,(gl_itemwidth-5)*dpiXFactor,20*dpiYFactor), Qt::AlignCenter| Qt::AlignBottom, name);
+}
+
+NewEqSideBarItem::NewEqSideBarItem(NewSideBar *sidebar, GcSideBarBtnId id, QImage icon, QString name)
+    : NewSideBarItem(sidebar, id, icon, name)
+{
+    connect(GlobalContext::context(), &GlobalContext::eqRecalculationComplete, this, &NewEqSideBarItem::eqRecalculationComplete);
+}
+
+void
+NewEqSideBarItem::eqRecalculationComplete()
+{
+    if (EquipmentCalculator::getInstance().itemWarnings().isEmpty()) {
+        // restore original colours
+        fg_normal = GCColor::invertColor(GColor(CCHROME));
+        fg_select = GCColor::invertColor(bg_select);
+    } else {
+        // set warning colours
+        fg_normal = QColor(QColor(255, 170, 0));
+        fg_select = fg_normal;
+    }
+    iconNormal = QPixmap::fromImage(imageRGB(icon, fg_normal), Qt::ColorOnly|Qt::PreferDither|Qt::DiffuseAlphaDither);
+    iconSelect = QPixmap::fromImage(imageRGB(icon, fg_select), Qt::ColorOnly|Qt::PreferDither|Qt::DiffuseAlphaDither);
+    iconNormal = iconNormal.scaled(24*dpiXFactor, 24*dpiXFactor, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    iconSelect = iconSelect.scaled(24*dpiXFactor, 24*dpiXFactor, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+
+    repaint();
+}
+
+void
+NewEqSideBarItem::configChanged(qint32 cfg)
+{
+    NewSideBarItem::configChanged(cfg);
+
+    eqRecalculationComplete();
 }

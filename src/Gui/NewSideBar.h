@@ -32,8 +32,9 @@ enum class GcSideBarBtnId : int {
     REFLECT_BTN = 4,
     TRAIN_BTN = 5,
     APPS_BTN = 6,
-    SYNC_BTN = 7,
-    OPTIONS_BTN = 8
+    EQUIPMENT_BTN = 7,
+    SYNC_BTN = 8,
+    OPTIONS_BTN = 9
 };
 
 class NewSideBarItem;
@@ -110,11 +111,11 @@ class NewSideBarItem : public QWidget
     public slots:
 
         // config changed
-        void configChanged(qint32);
+        virtual void configChanged(qint32);
 
         void paintEvent(QPaintEvent *event);
 
-    private:
+    protected:
 
         NewSideBar *sidebar; // for emitting signals
         GcSideBarBtnId id;
@@ -132,6 +133,21 @@ class NewSideBarItem : public QWidget
         bool selectable;
         bool enabled;
         bool clicked;
+};
+
+class NewEqSideBarItem : public NewSideBarItem
+{
+    Q_OBJECT
+
+    public:
+        NewEqSideBarItem(NewSideBar *sidebar, GcSideBarBtnId id, QImage icon, QString name);
+
+    protected slots:
+
+        // config changed
+        void configChanged(qint32) override;
+
+        void eqRecalculationComplete();
 };
 
 #endif // _GC_NewSideBar_h

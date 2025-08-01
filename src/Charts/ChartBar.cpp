@@ -240,6 +240,11 @@ ChartBar::setColor(int index, QColor color)
     buttons[index]->setColor(color);
 }
 
+void
+ChartBar::setWarning(int index, bool warning)
+{
+        buttons[index]->setWarning(warning);
+}
 
 // tidy up the scrollers on first show...
 void
@@ -425,7 +430,7 @@ ButtonBar::paintBackground(QPaintEvent *)
 
 ChartBarItem::ChartBarItem(ChartBar *chartbar) : QWidget(chartbar), chartbar(chartbar)
 {
-    red = highlighted = checked = false;
+    warning = highlighted = checked = false;
     state = Idle;
     QFont font;
     font.setPointSize(10);
@@ -456,6 +461,7 @@ ChartBarItem::paintEvent(QPaintEvent *)
 
     // now paint the text
     QPen pen(GCColor::invertColor(brush.color()));
+    if (warning) pen.setColor(QColor(255, 170, 0));
     painter.setPen(pen);
     painter.drawText(body, text, Qt::AlignHCenter | Qt::AlignVCenter);
 
