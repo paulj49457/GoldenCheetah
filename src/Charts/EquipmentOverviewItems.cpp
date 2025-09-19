@@ -24,6 +24,13 @@
 #include "EquipmentOverview.h"
 #include "Perspective.h"
 
+// to allow integral type atomics (c++11) to be used and to get them to hold values to 3 decimal places the following
+// factors are used to scale the values, this is sufficient for equipment overview usage. When c++23 is available
+// this can changed to use atomic<double> and the scaling can be removed.
+static const uint64_t EQ_REAL_TO_SCALED = 10000;
+static const double EQ_SCALED_TO_REAL = 0.0001;
+
+
 bool
 EquipmentOverviewItemConfig::registerItems()
 {
@@ -116,7 +123,8 @@ EquipmentOverviewItemConfig::EquipmentOverviewItemConfig(ChartSpaceItem* item, C
         // prevent negative values
         QDoubleValidator* eqValidator = new QDoubleValidator();
         eqValidator->setBottom(0);
-        eqValidator->setDecimals(1);
+        eqValidator->setTop(999999);
+        eqValidator->setDecimals(EQ_DECIMAL_PRECISION);
         eqValidator->setNotation(QDoubleValidator::StandardNotation);
 
         nonGCDistance = new QLineEdit();
@@ -269,10 +277,10 @@ EquipmentOverviewItemConfig::setWidgets()
 
         EquipmentItem *mi = dynamic_cast<EquipmentItem*>(item);
         name->setText(mi->name);
-        nonGCDistance->setText(QString::number(mi->getNonGCDistanceScaled() * EQ_SCALED_TO_REAL, 'f', 1));
-        nonGCElevation->setText(QString::number(mi->getNonGCElevationScaled() * EQ_SCALED_TO_REAL, 'f', 1));
-        replaceDistance->setText(QString::number(mi->repDistanceScaled_ * EQ_SCALED_TO_REAL, 'f', 1));
-        replaceElevation->setText(QString::number(mi->repElevationScaled_ * EQ_SCALED_TO_REAL, 'f', 1));
+        nonGCDistance->setText(QString::number(mi->getNonGCDistance(), 'f', 1));
+        nonGCElevation->setText(QString::number(mi->getNonGCElevation(), 'f', 1));
+        replaceDistance->setText(QString::number(mi->repDistance_, 'f', 1));
+        replaceElevation->setText(QString::number(mi->repElevation_, 'f', 1));
         replaceDateSet->setText((mi->repDateSet_) ? "reset" : "set");
         replaceDate->setVisible(mi->repDateSet_);
         if (mi->repDateSet_) replaceDate->setDate(mi->repDate_);
@@ -511,8 +519,8 @@ EquipmentOverviewItemConfig::dataChanged()
     {
         EquipmentItem* mi = dynamic_cast<EquipmentItem*>(item);
         mi->name = name->text();
-        mi->setNonGCDistance(nonGCDistance->text().toDouble()); // validator restricts 1 dp
-        mi->setNonGCElevation(nonGCElevation->text().toDouble()); // validator restricts 1 dp
+        mi->setNonGCDistance(nonGCDistance->text().toDouble());
+        mi->setNonGCElevation(nonGCElevation->text().toDouble());
        
         QVector<EqTimeWindow> eqLinkUse;
         for (int tableRow = 0; tableRow < eqTimeWindows->rowCount(); tableRow++) {
@@ -540,8 +548,8 @@ EquipmentOverviewItemConfig::dataChanged()
         }
         mi->eqLinkUseList_ = eqLinkUse;
 
-        mi->repDistanceScaled_ = round(replaceDistance->text().toDouble() * EQ_REAL_TO_SCALED); // validator restricts 1 dp
-        mi->repElevationScaled_ = round(replaceElevation->text().toDouble() * EQ_REAL_TO_SCALED); // validator restricts 1 dp
+        mi->repDistance_ = replaceDistance->text().toDouble();
+        mi->repElevation_ = replaceElevation->text().toDouble();
 
         mi->repDateSet_ = replaceDateSet->text() == "reset";
         if (mi->repDateSet_) mi->repDate_ = replaceDate->date();
@@ -784,10 +792,10 @@ EquipmentItem::EquipmentItem(ChartSpace* parent, const QString& name, const QUui
     // equipment item
     this->type = OverviewItemType::EQ_ITEM;
 
-    nonGCDistanceScaled_ = 0;
-    nonGCElevationScaled_ = 0;
-    repDistanceScaled_ = 0;
-    repElevationScaled_ = 0;
+    nonGCDistance_ = 0;
+    nonGCElevation_ = 0;
+    repDistance_ = 0;
+    repElevation_ = 0;
     repDateSet_ = false;
 
     resetForRecalc();
@@ -799,18 +807,19 @@ EquipmentItem::EquipmentItem(ChartSpace* parent, const QString& name, const QUui
 }
 
 EquipmentItem::EquipmentItem(ChartSpace* parent, const QString& name, QVector<EqTimeWindow>& eqLinkUse,
-                            const uint64_t nonGCDistanceScaled, const uint64_t nonGCElevationScaled,
-                            const uint64_t repDistanceScaled, const uint64_t repElevationScaled,
-                            const bool repDateSet, const QDate& repDate, const QString& notes)
+                            double nonGCDistance, double nonGCElevation,
+                            double repDistance, double repElevation,
+                            bool repDateSet, const QDate& repDate, const QString& notes)
     : EquipmentItem(parent, name, QUuid::createUuid())
 {
     eqLinkUseList_ = eqLinkUse;
     sortEquipmentWindows();
 
-    nonGCDistanceScaled_ = nonGCDistanceScaled;
-    nonGCElevationScaled_ = nonGCElevationScaled;
-    repDistanceScaled_ = repDistanceScaled;
-    repElevationScaled_ = repElevationScaled;
+    nonGCDistance_ = nonGCDistance;
+    nonGCElevation_ = nonGCElevation;
+    repDistance_ = repDistance;
+    repElevation_ = repElevation;
+
     repDateSet_ = repDateSet;
     repDate_ = repDate;
     notes_ = notes;
@@ -841,9 +850,9 @@ EquipmentItem::resetForRecalc()
     activities_ = 0;
     activityTimeInSecs_ = 0;
     gcDistanceScaled_ = 0;
-    totalDistanceScaled_ = nonGCDistanceScaled_;
+    totalDistanceScaled_ = nonGCDistance_*EQ_REAL_TO_SCALED;
     gcElevationScaled_ = 0;
-    totalElevationScaled_ = nonGCElevationScaled_;
+    totalElevationScaled_ = nonGCElevation_*EQ_REAL_TO_SCALED;
 }
 
 void
@@ -859,47 +868,58 @@ void
 EquipmentItem::unitsChanged()
 {
     // Need to rescale for the units change for the user entered data.
-    nonGCDistanceScaled_ = (GlobalContext::context()->useMetricUnits) ? round(nonGCDistanceScaled_ * KM_PER_MILE) : round (nonGCDistanceScaled_ * MILES_PER_KM);
-    repDistanceScaled_ = (GlobalContext::context()->useMetricUnits) ? round(repDistanceScaled_ * KM_PER_MILE) : round(repDistanceScaled_ * MILES_PER_KM);
-    nonGCElevationScaled_ = (GlobalContext::context()->useMetricUnits) ? round(nonGCElevationScaled_ * METERS_PER_FOOT) : round(nonGCElevationScaled_ * FEET_PER_METER);
-    repElevationScaled_ = (GlobalContext::context()->useMetricUnits) ? round (repElevationScaled_ * METERS_PER_FOOT) : round (repElevationScaled_ * FEET_PER_METER);
+    nonGCDistance_ = (GlobalContext::context()->useMetricUnits) ? round(nonGCDistance_ * KM_PER_MILE) : round (nonGCDistance_ * MILES_PER_KM);
+    repDistance_ = (GlobalContext::context()->useMetricUnits) ? round(repDistance_ * KM_PER_MILE) : round(repDistance_ * MILES_PER_KM);
+    nonGCElevation_ = (GlobalContext::context()->useMetricUnits) ? round(nonGCElevation_ * METERS_PER_FOOT) : round(nonGCElevation_ * FEET_PER_METER);
+    repElevation_ = (GlobalContext::context()->useMetricUnits) ? round (repElevation_ * METERS_PER_FOOT) : round (repElevation_ * FEET_PER_METER);
 }
 
 void
 EquipmentItem::setNonGCDistance(double nonGCDistance)
 {
     // using integral type atomics (c++11) but to retain accuracy multiply by EQ_REAL_TO_SCALED, see overviewItems.h
-    nonGCDistanceScaled_ = round(nonGCDistance*EQ_REAL_TO_SCALED);
-    totalDistanceScaled_ = gcElevationScaled_ + nonGCDistanceScaled_;
-}
-
-void
-EquipmentItem::setNonGCDistanceScaled(uint64_t nonGCDistanceScaled)
-{
-    // using integral type atomics (c++11) but to retain accuracy, see overviewItems.h
-    nonGCDistanceScaled_ = nonGCDistanceScaled;
-    totalDistanceScaled_ = gcElevationScaled_ + nonGCDistanceScaled_;
+    nonGCDistance_ = nonGCDistance;
+    totalDistanceScaled_ = gcElevationScaled_ + (nonGCDistance_*EQ_REAL_TO_SCALED);
 }
 
 void
 EquipmentItem::setNonGCElevation(double nonGCElevation)
 {
     // using integral type atomics (c++11) but to retain accuracy multiply by EQ_REAL_TO_SCALED, see overviewItems.h
-    nonGCElevationScaled_ = round(nonGCElevation*EQ_REAL_TO_SCALED);
-    totalElevationScaled_ = gcElevationScaled_ + nonGCElevationScaled_;
+    nonGCElevation_ = nonGCElevation;
+    totalElevationScaled_ = gcElevationScaled_ + (nonGCElevation_*EQ_REAL_TO_SCALED);
+}
+
+double
+EquipmentItem::getGCDistance() const
+{
+    return gcDistanceScaled_*EQ_SCALED_TO_REAL;
+}
+
+double
+EquipmentItem::getTotalDistance() const
+{
+    return totalDistanceScaled_*EQ_SCALED_TO_REAL;
+}
+
+double
+EquipmentItem::getGCElevation() const
+{
+    return gcElevationScaled_*EQ_SCALED_TO_REAL;
+}
+
+double
+EquipmentItem::getTotalElevation() const
+{
+    return totalElevationScaled_*EQ_SCALED_TO_REAL;
 }
 
 void
-EquipmentItem::setNonGCElevationScaled(uint64_t nonGCElevationScaled)
+EquipmentItem::addActivity(double rideDistance, double rideElevation, uint64_t rideTimeInSecs)
 {
-    // using integral type atomics (c++11) but to retain accuracy, see overviewItems.h
-    nonGCElevationScaled_ = nonGCElevationScaled;
-    totalElevationScaled_ = gcElevationScaled_ + nonGCElevationScaled_;
-}
+    uint64_t rideDistanceScaled = rideDistance*EQ_REAL_TO_SCALED;
+    uint64_t rideElevationScaled = rideElevation*EQ_REAL_TO_SCALED;
 
-void
-EquipmentItem::addActivity(uint64_t rideDistanceScaled, uint64_t rideElevationScaled, uint64_t rideTimeInSecs)
-{
     // Atomic safe additions
     activities_ += 1;
     activityTimeInSecs_ += rideTimeInSecs;
@@ -977,8 +997,8 @@ EquipmentItem::itemPaint(QPainter* painter, const QStyleOptionGraphicsItem*, QWi
     bool showElevationWids(dynamic_cast<EquipmentOverviewWindow*>(parent->window)->isShowElevation());
     bool showNotesWids(dynamic_cast<EquipmentOverviewWindow*>(parent->window)->isShowNotes());
 
-    bool overDistance = (repDistanceScaled_ !=0) && (getTotalDistanceScaled() > repDistanceScaled_);
-    bool overElevation = showElevationWids && (repElevationScaled_ !=0) && (getTotalElevationScaled() > repElevationScaled_);
+    bool overDistance = (repDistance_ !=0) && (getTotalDistance() > repDistance_);
+    bool overElevation = showElevationWids && (repElevation_ !=0) && (getTotalElevation() > repElevation_);
     bool overDate = (repDateSet_) && (QDate::currentDate() > repDate_);
 
     // we align centre and mid
@@ -999,7 +1019,7 @@ EquipmentItem::itemPaint(QPainter* painter, const QStyleOptionGraphicsItem*, QWi
     }
     QFontMetrics fm(selected);
 
-    QString totalDistanceStr(QString("%L1").arg(getTotalDistanceScaled() * EQ_SCALED_TO_REAL, 0, 'f', 0));
+    QString totalDistanceStr(QString("%L1").arg(getTotalDistance(), 0, 'f', 0));
     QRectF rect = QFontMetrics(selected, parent->device()).boundingRect(totalDistanceStr);
 
     if ((!rangeIsValid()) || (!allEqLinkNamesCompleterVals()) || overDistance || overElevation || overDate) {
@@ -1073,14 +1093,14 @@ EquipmentItem::itemPaint(QPainter* painter, const QStyleOptionGraphicsItem*, QWi
 
     rowY += (ROWHEIGHT * 1.2);
     painter->drawText(QRectF(ROWHEIGHT, rowY, rowWidth, rowHeight),
-        QString(tr("Distance: ")) + QString("%L1").arg(getGCDistanceScaled() * EQ_SCALED_TO_REAL, 0, 'f', 0) + distUnits);
+        QString(tr("Distance: ")) + QString("%L1").arg(getGCDistance(), 0, 'f', 0) + distUnits);
 
     QString elevUnits = GlobalContext::context()->useMetricUnits ? tr(" meters") : tr(" feet");
 
     if (showElevationWids) {
         rowY += ROWHEIGHT;
         painter->drawText(QRectF(ROWHEIGHT, rowY, rowWidth, rowHeight),
-            QString(tr("Elevation: ")) + QString("%L1").arg(getGCElevationScaled() * EQ_SCALED_TO_REAL, 0, 'f', 0) + elevUnits);
+            QString(tr("Elevation: ")) + QString("%L1").arg(getGCElevation(), 0, 'f', 0) + elevUnits);
     }
 
     rowY += ROWHEIGHT;
@@ -1090,42 +1110,42 @@ EquipmentItem::itemPaint(QPainter* painter, const QStyleOptionGraphicsItem*, QWi
     bool addNotesOffset = false;
     rowY += (ROWHEIGHT * 0.2);
 
-    if (getNonGCDistanceScaled() != 0) {
+    if (getNonGCDistance() != 0) {
 
         rowY += (ROWHEIGHT);
         addNotesOffset = true;
         painter->drawText(QRectF(ROWHEIGHT, rowY, rowWidth, rowHeight),
-            QString(tr("Manual dst: ")) + QString("%L1").arg(getNonGCDistanceScaled() * EQ_SCALED_TO_REAL, 0, 'f', 0) + distUnits);
+            QString(tr("Manual dst: ")) + QString("%L1").arg(getNonGCDistance(), 0, 'f', 0) + distUnits);
     }
 
-    if (showElevationWids && (getNonGCElevationScaled() != 0)) {
+    if (showElevationWids && (getNonGCElevation() != 0)) {
 
         rowY += ROWHEIGHT;
         addNotesOffset = true;
         painter->drawText(QRectF(ROWHEIGHT, rowY, rowWidth, rowHeight),
-            QString(tr("Manual elev: ")) + QString("%L1").arg(getNonGCElevationScaled() * EQ_SCALED_TO_REAL, 0, 'f', 0) + elevUnits);
+            QString(tr("Manual elev: ")) + QString("%L1").arg(getNonGCElevation(), 0, 'f', 0) + elevUnits);
     }
 
-    if (repDistanceScaled_ != 0) {
+    if (repDistance_ != 0) {
 
         if (overDistance) painter->setPen(alertColor_);
 
         rowY += ROWHEIGHT;
         addNotesOffset = true;
         painter->drawText(QRectF(ROWHEIGHT, rowY, rowWidth, rowHeight),
-            QString(tr("Replace dist: ")) + QString("%L1").arg(repDistanceScaled_ * EQ_SCALED_TO_REAL, 0, 'f', 0) + distUnits);
+            QString(tr("Replace dist: ")) + QString("%L1").arg(repDistance_, 0, 'f', 0) + distUnits);
 
         if (overDistance) painter->setPen(textColor_);
     }
 
-    if (showElevationWids && (repElevationScaled_ != 0)) {
+    if (showElevationWids && (repElevation_ != 0)) {
 
         if (overElevation) painter->setPen(alertColor_);
 
         rowY += ROWHEIGHT;
         addNotesOffset = true;
         painter->drawText(QRectF(ROWHEIGHT, rowY, rowWidth, rowHeight),
-            QString(tr("Replace elev: ")) + QString("%L1").arg(repElevationScaled_ * EQ_SCALED_TO_REAL, 0, 'f', 0) + elevUnits);
+            QString(tr("Replace elev: ")) + QString("%L1").arg(repElevation_, 0, 'f', 0) + elevUnits);
 
         if (overElevation) painter->setPen(textColor_);
     }
@@ -1210,8 +1230,7 @@ EquipmentSummary::resetForRecalc()
 
 void
 EquipmentSummary::addActivity(const QString& athleteName, const QDate& activityDate,
-    const uint64_t rideDistanceScaled, const uint64_t eqElevationScaled,
-    const uint64_t rideTimeInSecs)
+    double rideDistance, double rideElevation, uint64_t rideTimeInSecs)
 {
     activityMutex_.lock();
 
@@ -1228,8 +1247,11 @@ EquipmentSummary::addActivity(const QString& athleteName, const QDate& activityD
 
     activityMutex_.unlock();
 
+    uint64_t rideDistanceScaled = rideDistance*EQ_REAL_TO_SCALED;
+    uint64_t rideElevationScaled = rideElevation*EQ_REAL_TO_SCALED;
+
     eqLinkTotalDistanceScaled_ += rideDistanceScaled;
-    eqLinkTotalElevationScaled_ += eqElevationScaled;
+    eqLinkTotalElevationScaled_ += rideElevationScaled;
     eqLinkTotalTimeInSecs_ += rideTimeInSecs;
 }
 

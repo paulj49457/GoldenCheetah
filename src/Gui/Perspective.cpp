@@ -297,9 +297,7 @@ EquipmentPerspective::toXml(QTextStream &out)
     // begin document
     xmlOut << "<!-- This file holds the equipment data information which cannot be derived from calculation           -->\n\n";
     xmlOut << "<!-- Note: Careful modification of the exisiting fields whilst GC is shutdown should be fine,          -->\n";
-    xmlOut << "<!--       provided the inline comments are followed, new entries cannot be created.                   -->\n";
-    xmlOut << "<!-- Note: Distances are 10,000x greater than expected, until GC is based upon c++23 atomics           -->\n\n";
-
+    xmlOut << "<!--       provided the inline comments are followed, new entries cannot be created.                   -->\n\n";
     xmlOut << "<equipmentdata>\n";
 
     xmlOut << QString("\t<version>1</version>\n");

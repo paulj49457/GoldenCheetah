@@ -23,12 +23,6 @@
 #include <memory> // Atomics
 #include "OverviewItems.h"
 
-// to allow integral type atomics (c++11) to be used and to get them to hold values to 3 decimal places the following
-// factors are used to scale the values, this is sufficient for equipment overview usage. When c++23 is available
-// this can changed to use atomic<double> and the scaling can be removed.
-#define EQ_REAL_TO_SCALED 10000
-#define EQ_SCALED_TO_REAL 0.0001
-
 class ColorButton;
 
 class EqTimeWindow
@@ -161,9 +155,9 @@ class EquipmentItem : public CommonEquipmentItem
 
         // create using new Uuid
         EquipmentItem(ChartSpace *parent, const QString& name, QVector<EqTimeWindow>& eqLinkUse,
-                        const uint64_t nonGCDistanceScaled, const uint64_t nonGCElevationScaled,
-                        const uint64_t repDistanceScaled, const uint64_t repElevationScaled,
-                        const bool repDateSet, const QDate& repDate, const QString& notes);
+                        double nonGCDistance, double nonGCElevation,
+                        double repDistance, double repElevation,
+                        bool repDateSet, const QDate& repDate, const QString& notes);
 
         virtual ~EquipmentItem() {}
 
@@ -179,20 +173,20 @@ class EquipmentItem : public CommonEquipmentItem
 
         void resetForRecalc() override;
         void unitsChanged();
-        void addActivity(uint64_t rideDistanceScaled, uint64_t rideElevationScaled, uint64_t rideTimeInSecs);
-                        uint64_t getNumActivities() const { return activities_; }
+        void addActivity(double rideDistance, double rideElevation, uint64_t rideTimeInSecs);
+        uint64_t getNumActivities() const { return activities_; }
 
+        // set and get primary state
         void setNonGCDistance(double nonGCDistance);
-        void setNonGCDistanceScaled(uint64_t nonGCDistanceScaled);
-        uint64_t getNonGCDistanceScaled() const { return nonGCDistanceScaled_; }
-        uint64_t getGCDistanceScaled() const { return gcDistanceScaled_; }
-        uint64_t getTotalDistanceScaled() const { return totalDistanceScaled_; }
-
+        double getNonGCDistance() const { return nonGCDistance_; }
         void setNonGCElevation(double nonGCElevation);
-        void setNonGCElevationScaled(uint64_t nonGCElevationScaled);
-        uint64_t getNonGCElevationScaled() const { return nonGCElevationScaled_; }
-        uint64_t getGCElevationScaled() const { return gcElevationScaled_; }
-        uint64_t getTotalElevationScaled() const { return totalElevationScaled_; }
+        double getNonGCElevation() const { return nonGCElevation_; }
+
+        // get derived state
+        double getGCDistance() const;
+        double getTotalDistance() const;
+        double getGCElevation() const;
+        double getTotalElevation() const;
 
         void sortEquipmentWindows();
 
@@ -201,21 +195,25 @@ class EquipmentItem : public CommonEquipmentItem
             return new EquipmentItem(parent, tr("Equipment Item"), QUuid::createUuid()); }
 
         QVector<EqTimeWindow> eqLinkUseList_;
+        double repDistance_;
+        double repElevation_;
         bool repDateSet_;
         QDate repDate_;
-        uint64_t repDistanceScaled_, repElevationScaled_;
         QString notes_;
 
     private:
 
+        double nonGCDistance_;
+        double nonGCElevation_;
+
+        // using integral type atomics (c++11)
         std::atomic<uint64_t> activities_;
         std::atomic<uint64_t> activityTimeInSecs_;
 
-        uint64_t nonGCDistanceScaled_;
+        // using integral type atomics (c++11) but to retain accuracy, need c++ 23 for double atomics
+        // all distance and elevation attributes scaled by EQ_REAL_TO_SCALED
         std::atomic<uint64_t> gcDistanceScaled_;
         std::atomic<uint64_t> totalDistanceScaled_;
-
-        uint64_t nonGCElevationScaled_;
         std::atomic<uint64_t> gcElevationScaled_;
         std::atomic<uint64_t> totalElevationScaled_;
 };
@@ -237,8 +235,8 @@ class EquipmentSummary : public CommonEquipmentItem
         void itemPaint(QPainter* painter, const QStyleOptionGraphicsItem*, QWidget*) override;
 
         void resetForRecalc() override;
-        void addActivity(const QString& athleteName, const QDate& activityDate, const uint64_t rideDistanceScaled,
-                            const uint64_t eqElevationScaled, const uint64_t rideTimeInSecs);
+        void addActivity(const QString& athleteName, const QDate& activityDate, double rideDistance,
+                            double rideElevation, uint64_t rideTimeInSecs);
 
         // create and config using new Uuid
         static ChartSpaceItem* create(ChartSpace* parent) {

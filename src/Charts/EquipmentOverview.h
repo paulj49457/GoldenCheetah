@@ -23,6 +23,8 @@
 #include "ChartSpace.h"
 #include "EquipmentOverviewItems.h"
 
+static const uint64_t EQ_DECIMAL_PRECISION = 1;
+
 namespace eqTextSizeType {
     enum eqTxtType { SMALL = 0, MEDIUM, LARGE };
 };

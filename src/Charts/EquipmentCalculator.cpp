@@ -127,11 +127,7 @@ EquipCalculator::recalculateEq(RideItem* rideItem)
 
     // using integral type atomics (c++11) but to retain accuracy multiply by EQ_REAL_TO_SCALED, see overviewItems.h
     double rideDistance = rideItem->getForSymbol("total_distance", GlobalContext::context()->useMetricUnits);
-    uint64_t rideDistanceScaled = static_cast<uint64_t>(round(rideDistance*EQ_REAL_TO_SCALED));
-
     double rideElevation = rideItem->getForSymbol("elevation_gain", GlobalContext::context()->useMetricUnits);
-    uint64_t eqElevationScaled = static_cast<uint64_t>(round(rideElevation*EQ_REAL_TO_SCALED));
-
     uint64_t rideTimeInSecs = static_cast<uint64_t>(rideItem->getForSymbol("time_riding"));
 
     QStringList rideEqLinkNameList = rideItem->getText("EquipmentLink", "abcde").simplified().remove(' ').split(",");
@@ -144,7 +140,7 @@ EquipCalculator::recalculateEq(RideItem* rideItem)
         {
             if (static_cast<EquipmentItem*>(item)->isWithin(rideEqLinkNameList, actDate)) {
 
-                static_cast<EquipmentItem*>(item)->addActivity(rideDistanceScaled, eqElevationScaled, rideTimeInSecs);
+                static_cast<EquipmentItem*>(item)->addActivity(rideDistance, rideElevation, rideTimeInSecs);
             }
         } break;
 
@@ -154,9 +150,8 @@ EquipCalculator::recalculateEq(RideItem* rideItem)
             if ((static_cast<EquipmentSummary*>(item)->getEqLinkName() == "") ||
                 (rideEqLinkNameList.contains(static_cast<EquipmentSummary*>(item)->getEqLinkName()))) {
 
-                static_cast<EquipmentSummary*>(item)->addActivity(rideItem->context->athlete->cyclist,
-                                                                    actDate, rideDistanceScaled,
-                                                                    eqElevationScaled, rideTimeInSecs);
+                static_cast<EquipmentSummary*>(item)->addActivity(rideItem->context->athlete->cyclist, actDate,
+                                                                    rideDistance, rideElevation, rideTimeInSecs);
             }
         } break;
 

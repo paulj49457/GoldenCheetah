@@ -112,8 +112,8 @@ EquipmentOverviewWindow::cloneTile(ChartSpaceItem* item)
 
         // clone the equipment item
         EquipmentItem* clonedItem = new EquipmentItem(meta->parent, meta->name + " clone", meta->eqLinkUseList_,
-            meta->getNonGCDistanceScaled(), meta->getNonGCElevationScaled(),
-            meta->repDistanceScaled_, meta->repElevationScaled_,
+            meta->getNonGCDistance(), meta->getNonGCElevation(),
+            meta->repDistance_, meta->repElevation_,
             meta->repDateSet_, meta->repDate_, meta->notes_);
 
         clonedItem->bgcolor = meta->bgcolor;
@@ -281,11 +281,13 @@ EquipmentOverviewWindow::setTileConfig(const QJsonObject& obj, int type, const Q
 
         } else {
 
+            // Legacy code for conversion, will be removed in future release.
+
             bool savedAsMetric = (obj["metric"].toString() == "1") ? true : false;
-            uint64_t nonGCDistanceScaled = obj["nonGCDistanceScaled"].toString().toULongLong();
-            uint64_t nonGCElevationScaled = obj["nonGCElevationScaled"].toString().toULongLong();
-            uint64_t repDistance = obj["repDistance"].toString().toULongLong();
-            uint64_t repElevation = obj["repElevation"].toString().toULongLong();
+            double nonGCDistance = obj["nonGCDistanceScaled"].toString().toULongLong()*0.0001;
+            double nonGCElevation = obj["nonGCElevationScaled"].toString().toULongLong()*0.0001;
+            double repDistance = obj["repDistance"].toString().toULongLong()*0.0001;
+            double repElevation = obj["repElevation"].toString().toULongLong()*0.0001;
             bool repDateSet = (obj["repDateSet"].toString() == "1") ? true : false;
             QDate repDate;
             if (repDateSet) repDate = QDate::fromString(obj["repDate"].toString());
@@ -294,18 +296,18 @@ EquipmentOverviewWindow::setTileConfig(const QJsonObject& obj, int type, const Q
             // as the units might have changed before the equipment perspective is loaded.
             if (savedAsMetric && !GlobalContext::context()->useMetricUnits) {
 
-                nonGCDistanceScaled = round(nonGCDistanceScaled * KM_PER_MILE);
-                nonGCElevationScaled = round(nonGCElevationScaled * METERS_PER_FOOT);
-                repDistance = round(repDistance * KM_PER_MILE);
-                repElevation = round(repElevation * METERS_PER_FOOT);
+                nonGCDistance = nonGCDistance * KM_PER_MILE;
+                nonGCElevation = nonGCElevation * METERS_PER_FOOT;
+                repDistance = repDistance * KM_PER_MILE;
+                repElevation = repElevation * METERS_PER_FOOT;
 
             }
             if (!savedAsMetric && GlobalContext::context()->useMetricUnits) {
 
-                nonGCDistanceScaled = round(nonGCDistanceScaled * MILES_PER_KM);
-                nonGCElevationScaled = round(nonGCElevationScaled * FEET_PER_METER);
-                repDistance = round(repDistance * MILES_PER_KM);
-                repElevation = round(repElevation * FEET_PER_METER);
+                nonGCDistance = nonGCDistance * MILES_PER_KM;
+                nonGCElevation = nonGCElevation * FEET_PER_METER;
+                repDistance = repDistance * MILES_PER_KM;
+                repElevation = repElevation * FEET_PER_METER;
             }
 
             QVector<EqTimeWindow> eqLinkUse;
@@ -328,7 +330,7 @@ EquipmentOverviewWindow::setTileConfig(const QJsonObject& obj, int type, const Q
 
             QString notes = Utils::jsonunprotect(obj["notes"].toString());
 
-            add = new EquipmentItem(space, name, eqLinkUse, nonGCDistanceScaled, nonGCElevationScaled,
+            add = new EquipmentItem(space, name, eqLinkUse, nonGCDistance, nonGCElevation,
                                     repDistance, repElevation, repDateSet, repDate, notes);
             add->datafilter = datafilter;
             space->addItem(order, column, span, deep, add);
@@ -444,6 +446,9 @@ EquipmentOverviewConfigDialog::EquipmentOverviewConfigDialog(ChartSpaceItem* ite
 void
 EquipmentOverviewWindow::writeXML(QTextStream &xmlOut) const
 {
+    xmlOut.setRealNumberNotation(QTextStream::FixedNotation);
+    xmlOut.setRealNumberPrecision(EQ_DECIMAL_PRECISION);
+
     for (ChartSpaceItem* item : space->allItems()) {
 
         switch (item->type) {
@@ -455,10 +460,11 @@ EquipmentOverviewWindow::writeXML(QTextStream &xmlOut) const
             xmlOut << "\t\t<equipmentitem>\n";
             xmlOut << "\t\t\t<eqreference>" << meta->equipmentRef_.toString(QUuid::WithoutBraces) << "</eqreference>    <!-- Do not modify -->\n";
             xmlOut << QString("\t\t\t<eqtilename>%1</eqtilename>    <!-- For reference -->\n").arg(Utils::xmlprotect(item->name));
-            xmlOut << "\t\t\t<nongcdistance>" << meta->getNonGCDistanceScaled() << "</nongcdistance>\n";
-            xmlOut << "\t\t\t<nongcelevation>" << meta->getNonGCElevationScaled() << "</nongcelevation>\n";
-            xmlOut << "\t\t\t<repdistance>" << meta->repDistanceScaled_ << "</repdistance>\n";
-            xmlOut << "\t\t\t<repelevation>" << meta->repElevationScaled_ << "</repelevation>\n";
+
+            xmlOut << "\t\t\t<nongcdistance>" << meta->getNonGCDistance() << "</nongcdistance>\n";
+            xmlOut << "\t\t\t<nongcelevation>" << meta->getNonGCElevation() << "</nongcelevation>\n";
+            xmlOut << "\t\t\t<repdistance>" << meta->repDistance_ << "</repdistance>\n";
+            xmlOut << "\t\t\t<repelevation>" << meta->repElevation_ << "</repelevation>\n";
             xmlOut << QString("\t\t\t<repdate>%1</repdate>\n").arg(meta->repDateSet_ ? Utils::xmlprotect(meta->repDate_.toString()) : "");
 
             for (const auto& eqUse : meta->eqLinkUseList_) {
@@ -629,10 +635,10 @@ bool EquipmentXMLParser::endElement( const QString&, const QString&, const QStri
         case OverviewItemType::EQ_ITEM: {
             EquipmentItem* eqItem = reinterpret_cast<EquipmentItem*>(itemToLoad_);
 
-            if (qName == "nongcdistance") eqItem->setNonGCDistanceScaled(round(Utils::unprotect(buffer.trimmed()).toULongLong() * scalerKmMile_));
-            else if (qName == "nongcelevation") eqItem->setNonGCElevationScaled(round(Utils::unprotect(buffer.trimmed()).toULongLong() * scalerMtrFoot_));
-            else if (qName == "repdistance") eqItem->repDistanceScaled_ = round(Utils::unprotect(buffer.trimmed()).toULongLong() * scalerKmMile_);
-            else if (qName == "repelevation") eqItem->repElevationScaled_ = round(Utils::unprotect(buffer.trimmed()).toULongLong() * scalerMtrFoot_);
+            if (qName == "nongcdistance") eqItem->setNonGCDistance(Utils::unprotect(buffer.trimmed()).toDouble() * scalerKmMile_);
+            else if (qName == "nongcelevation") eqItem->setNonGCElevation(Utils::unprotect(buffer.trimmed()).toDouble() * scalerMtrFoot_);
+            else if (qName == "repdistance") eqItem->repDistance_ = Utils::unprotect(buffer.trimmed()).toDouble() * scalerKmMile_;
+            else if (qName == "repelevation") eqItem->repElevation_ = Utils::unprotect(buffer.trimmed()).toDouble() * scalerMtrFoot_;
             else if (qName == "repdate") {
                 eqItem->repDateSet_ = (buffer.trimmed() != "");
                 eqItem->repDate_ = eqItem->repDateSet_ ? QDate::fromString(Utils::unprotect((buffer.trimmed()))) : QDate();
