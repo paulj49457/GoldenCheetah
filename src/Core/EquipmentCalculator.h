@@ -59,9 +59,6 @@ class EquipmentCalculator : public QObject
         // Call with the first (boot strap) athlete's context
         void initialise(Context *context);
 
-        // ugly, only used in mainWindow startup
-        void forceRecalc(const QString& reason) { recalculateCache(reason); }
-
         // mechanism to disabled calculations during GC shutdown.
         void disableCalculations(bool disableCalculations);
 

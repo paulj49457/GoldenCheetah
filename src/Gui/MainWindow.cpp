@@ -776,7 +776,8 @@ MainWindow::MainWindow(const QDir &home)
     delete splash;
     splash = nullptr;
 
-    EquipmentCalculator::getInstance().forceRecalc("startup");
+    // force equipment recalculation as no suitable signal available.
+    GlobalContext::context()->requestEqRecalculation("startup complete");
 }
 
 
