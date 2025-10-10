@@ -98,11 +98,12 @@ class CommonEqItem : public ChartSpaceItem
         void showEvent(QShowEvent* event) override;
         void displayTileEditMenu(const QPoint& pos) override;
 
+        void chartTitleChanged(const QString& title);
+
         QWidget* config() override { return configwidget_; }
 
         const QUuid& getEquipmentRef() const { return equipmentRef_; }
         AbstractEqItem* getAbsEqItem() const { return absEqItem_; }
-        QString getXMLReference(ChartSpace* parent, const QString& name);
 
         double tileDisplayHeight_;
         EquipmentOverviewItemConfig* configwidget_ = nullptr;

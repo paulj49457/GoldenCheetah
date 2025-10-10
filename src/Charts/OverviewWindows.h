@@ -96,6 +96,7 @@ class EquipmentOverviewWindow : public OverviewWindow
         void setShowElevation(int value) { showElevation->setChecked(value); }
         void setShowNotes(int value) { showNotes->setChecked(value); }
 
+        void titleChanged(QString title);
         void configChanged(qint32 cfg);
 
         void saveChart() override;

@@ -87,24 +87,33 @@ EqTimeWindow::rangeIsValid() const
 // ------------------------------------- Abstract Equipment Item -----------------------------------------
 //
 
-AbstractEqItem::AbstractEqItem(const QUuid& equipmentRef, const QString& xmlRefName, EqItemType equipmentType) :
-    equipmentRef_(equipmentRef), xmlRefName_(xmlRefName), equipmentType_(equipmentType)
+AbstractEqItem::AbstractEqItem(const QUuid& equipmentRef, const QString& xmlChartName, const QString& xmlTileName, EqItemType equipmentType) :
+    equipmentRef_(equipmentRef), xmlChartName_(xmlChartName), xmlTileName_(xmlTileName), equipmentType_(equipmentType)
 {
 }
 
 void
-AbstractEqItem::writeXml(QTextStream& xmlOut) const
+AbstractEqItem::writeXml(uint32_t version, QTextStream& xmlOut) const
 {
-    xmlOut << "\t\t\t<eqreference>" << Utils::xmlprotect(getEquipmentRef().toString(QUuid::WithoutBraces)) << "</eqreference>";
-    xmlOut << "\t<!-- " << Utils::xmlprotect(xmlRefName_) << " -->\n";
+    if (version == 1) {
+
+        xmlOut << "\t\t\t<eqreference>" << Utils::xmlprotect(getEquipmentRef().toString(QUuid::WithoutBraces)) << "</eqreference>\n";
+
+        // the chart & tile names are stored and loaded from the equipment-perspectives.xml file,
+        // they are only exported in the equipment-data.xml for tile identification purposes.
+        xmlOut << "\t\t\t<eqchart>" << Utils::xmlprotect(xmlChartName_) << "</eqchart>\n";
+        xmlOut << "\t\t\t<eqtile>" << Utils::xmlprotect(xmlTileName_) << "</eqtile>\n";
+    } else {
+        qDebug() << "AbstractEqItem::writeXml - invalid file version:" << version;
+    }
 }
 
 //
 // ---------------------------------------- Equipment Item --------------------------------------------
 //
 
-EqItem::EqItem(const QUuid& equipmentRef, const QString& xmlRefName)
-    : AbstractEqItem(equipmentRef, xmlRefName, EqItemType::EQ_ITEM),
+EqItem::EqItem(const QUuid& equipmentRef, const QString& xmlChartName, const QString& xmlTileName)
+    : AbstractEqItem(equipmentRef, xmlChartName, xmlTileName, EqItemType::EQ_ITEM),
     displayTotalDistance_(true), nonGCDistance_(0), nonGCElevation_(0),
     repDistance_(0), repElevation_(0), repDateSet_(false),
     xmlScalerKmMile_(1.0), xmlScalerMtrFoot_(1.0)
@@ -113,7 +122,7 @@ EqItem::EqItem(const QUuid& equipmentRef, const QString& xmlRefName)
 }
 
 EqItem::EqItem(const EqItem& toCopy)
-    : AbstractEqItem(QUuid::createUuid(), toCopy.xmlRefName_, EqItemType::EQ_ITEM)
+    : AbstractEqItem(QUuid::createUuid(), toCopy.xmlChartName_, toCopy.xmlTileName_, EqItemType::EQ_ITEM)
 {
     displayTotalDistance_ = toCopy.displayTotalDistance_;
 
@@ -284,6 +293,9 @@ EqItem::parseXML(uint32_t version, const QString& qName, const QString& buffer)
 
         static EqTimeWindow windowToLoad;
 
+        // the chart & tile names are stored and loaded from the equipment-perspectives.xml file,
+        // they are not imported from the equipment-data.xml.
+
         if (qName == "displaytotal") displayTotalDistance_ = (buffer != "elevation");
         else if (qName == "nongcdistance") setNonGCDistance(buffer.toDouble() * xmlScalerKmMile_);
         else if (qName == "nongcelevation") setNonGCElevation(buffer.toDouble() * xmlScalerMtrFoot_);
@@ -313,29 +325,34 @@ EqItem::parseXML(uint32_t version, const QString& qName, const QString& buffer)
 }
 
 void
-EqItem::writeXml(QTextStream& xmlOut) const
+EqItem::writeXml(uint32_t version, QTextStream& xmlOut) const
 {
-    xmlOut << "\t\t<equipmentitem>\n";
+    if (version == 1) {
 
-    AbstractEqItem::writeXml(xmlOut);
+        xmlOut << "\t\t<equipmentitem>\n";
 
-    xmlOut << "\t\t\t<displaytotal>" << (displayTotalDistance_ ? "distance" : "elevation") << "</displaytotal>\n";
-    xmlOut << "\t\t\t<nongcdistance>" << nonGCDistance_ << "</nongcdistance>\n";
-    xmlOut << "\t\t\t<nongcelevation>" << nonGCElevation_ << "</nongcelevation>\n";
-    xmlOut << "\t\t\t<repdistance>" << repDistance_ << "</repdistance>\n";
-    xmlOut << "\t\t\t<repelevation>" << repElevation_ << "</repelevation>\n";
-    xmlOut << "\t\t\t<repdate>" << (repDateSet_ ? Utils::xmlprotect(repDate_.toString()) : "") << "</repdate>\n";
+        AbstractEqItem::writeXml(version, xmlOut);
 
-    for (const auto& eqUse : eqLinkUseList_) {
-        xmlOut << "\t\t\t<equipmentuse>\n";
-        xmlOut << "\t\t\t\t<eqlink>" << Utils::xmlprotect(eqUse.eqLinkName()) << "</eqlink>\n";
-        xmlOut << "\t\t\t\t<startdate>" << (eqUse.startSet_ ? Utils::xmlprotect(eqUse.startDate_.toString()) : "") << "</startdate>\n";
-        xmlOut << "\t\t\t\t<enddate>" << (eqUse.endSet_ ? Utils::xmlprotect(eqUse.endDate_.toString()) : "") << "</enddate>\n";
-        xmlOut << "\t\t\t</equipmentuse>\n";
+        xmlOut << "\t\t\t<displaytotal>" << (displayTotalDistance_ ? "distance" : "elevation") << "</displaytotal>\n";
+        xmlOut << "\t\t\t<nongcdistance>" << nonGCDistance_ << "</nongcdistance>\n";
+        xmlOut << "\t\t\t<nongcelevation>" << nonGCElevation_ << "</nongcelevation>\n";
+        xmlOut << "\t\t\t<repdistance>" << repDistance_ << "</repdistance>\n";
+        xmlOut << "\t\t\t<repelevation>" << repElevation_ << "</repelevation>\n";
+        xmlOut << "\t\t\t<repdate>" << (repDateSet_ ? Utils::xmlprotect(repDate_.toString()) : "") << "</repdate>\n";
+
+        for (const auto& eqUse : eqLinkUseList_) {
+            xmlOut << "\t\t\t<equipmentuse>\n";
+            xmlOut << "\t\t\t\t<eqlink>" << Utils::xmlprotect(eqUse.eqLinkName()) << "</eqlink>\n";
+            xmlOut << "\t\t\t\t<startdate>" << (eqUse.startSet_ ? Utils::xmlprotect(eqUse.startDate_.toString()) : "") << "</startdate>\n";
+            xmlOut << "\t\t\t\t<enddate>" << (eqUse.endSet_ ? Utils::xmlprotect(eqUse.endDate_.toString()) : "") << "</enddate>\n";
+            xmlOut << "\t\t\t</equipmentuse>\n";
+        }
+        xmlOut << "\t\t\t<notes>" << Utils::xmlprotect(notes_) << "</notes>\n";
+
+        xmlOut << "\t\t</equipmentitem>\n";
+    } else {
+        qDebug() << "EqItem::writeXml - invalid file version:" << version;
     }
-    xmlOut << "\t\t\t<notes>" << Utils::xmlprotect(notes_) << "</notes>\n";
-
-    xmlOut << "\t\t</equipmentitem>\n";
 }
 
 void
@@ -397,15 +414,15 @@ EqItem::parseLegacyJSON(const QJsonObject& obj)
 // ---------------------------------------- Equipment Summary --------------------------------------------
 //
 
-EqSummary::EqSummary(const QUuid& equipmentRef, const QString& xmlRefName)
-    : AbstractEqItem(equipmentRef, xmlRefName, EqItemType::EQ_SUMMARY),
+EqSummary::EqSummary(const QUuid& equipmentRef, const QString& xmlChartName, const QString& xmlTileName)
+    : AbstractEqItem(equipmentRef, xmlChartName, xmlTileName, EqItemType::EQ_SUMMARY),
         eqLinkIsCompleterVal_(false), showActivitiesPerAthlete_(false)
 {
     resetDerived();
 }
 
 EqSummary::EqSummary(const EqSummary& toCopy)
-    : AbstractEqItem(QUuid::createUuid(), toCopy.xmlRefName_, EqItemType::EQ_SUMMARY)
+    : AbstractEqItem(QUuid::createUuid(), toCopy.xmlChartName_, toCopy.xmlTileName_, EqItemType::EQ_SUMMARY)
 {
     eqLinkName_ = toCopy.eqLinkName_;
     eqLinkIsCompleterVal_ = toCopy.eqLinkIsCompleterVal_;
@@ -493,6 +510,9 @@ EqSummary::parseXML(uint32_t version, const QString& qName, const QString& buffe
 {
     if (version == 1) {
 
+        // the chart & tile names are stored and loaded from the equipment-perspectives.xml file,
+        // they are not imported from the equipment-data.xml.
+
         if (qName == "eqlink") setEqLinkName(buffer);
         else if (qName == "showathleteactivities") showActivitiesPerAthlete_ = (buffer == "true");
     } else {
@@ -501,16 +521,21 @@ EqSummary::parseXML(uint32_t version, const QString& qName, const QString& buffe
 }
 
 void
-EqSummary::writeXml(QTextStream& xmlOut) const
+EqSummary::writeXml(uint32_t version, QTextStream& xmlOut) const
 {
-    xmlOut << "\t\t<equipmentsummary>\n";
+    if (version == 1) {
 
-    AbstractEqItem::writeXml(xmlOut);
+        xmlOut << "\t\t<equipmentsummary>\n";
 
-    xmlOut << "\t\t\t<eqlink>" << Utils::xmlprotect(getEqLinkName()) << "</eqlink>\n";
-    xmlOut << "\t\t\t<showathleteactivities>" << (showActivitiesPerAthlete_ ? "true" : "false") << "</showathleteactivities>\n";
+        AbstractEqItem::writeXml(version, xmlOut);
 
-    xmlOut << "\t\t</equipmentsummary>\n";
+        xmlOut << "\t\t\t<eqlink>" << Utils::xmlprotect(getEqLinkName()) << "</eqlink>\n";
+        xmlOut << "\t\t\t<showathleteactivities>" << (showActivitiesPerAthlete_ ? "true" : "false") << "</showathleteactivities>\n";
+
+        xmlOut << "\t\t</equipmentsummary>\n";
+    } else {
+        qDebug() << "EqSummary::writeXml - invalid file version:" << version;
+    }
 }
 
 void
@@ -551,13 +576,13 @@ EqHistoryEntry::reset()
 // ---------------------------------------- Equipment History --------------------------------------------
 //
 
-EqHistory::EqHistory(const QUuid& equipmentRef, const QString& xmlRefName) :
-    AbstractEqItem(equipmentRef, xmlRefName, EqItemType::EQ_HISTORY), sortMostRecentFirst_(true)
+EqHistory::EqHistory(const QUuid& equipmentRef, const QString& xmlChartName, const QString& xmlTileName) :
+    AbstractEqItem(equipmentRef, xmlChartName, xmlTileName, EqItemType::EQ_HISTORY), sortMostRecentFirst_(true)
 {
 }
 
 EqHistory::EqHistory(const EqHistory& toCopy)
-    : AbstractEqItem(QUuid::createUuid(), toCopy.xmlRefName_, EqItemType::EQ_HISTORY)
+    : AbstractEqItem(QUuid::createUuid(), toCopy.xmlChartName_, toCopy.xmlTileName_, EqItemType::EQ_HISTORY)
 {
     eqHistoryList_ = toCopy.eqHistoryList_;
     sortMostRecentFirst_ = toCopy.sortMostRecentFirst_;
@@ -579,6 +604,9 @@ EqHistory::parseXML(uint32_t version, const QString& qName, const QString& buffe
 
         static EqHistoryEntry eqHistoryEntry;
 
+        // the chart & tile names are stored and loaded from the equipment-perspectives.xml file,
+        // they are not imported from the equipment-data.xml.
+
         if (qName == "sortmostrecentfirst") sortMostRecentFirst_ = (buffer == "true");
         else if (qName == "historydate") eqHistoryEntry.date_ = QDate::fromString(buffer);
         else if (qName == "historytext") eqHistoryEntry.text_ = buffer;
@@ -592,21 +620,26 @@ EqHistory::parseXML(uint32_t version, const QString& qName, const QString& buffe
 }
 
 void
-EqHistory::writeXml(QTextStream& xmlOut) const
+EqHistory::writeXml(uint32_t version, QTextStream& xmlOut) const
 {
-    xmlOut << "\t\t<equipmenthistory>\n";
+    if (version == 1) {
 
-    AbstractEqItem::writeXml(xmlOut);
+        xmlOut << "\t\t<equipmenthistory>\n";
 
-    xmlOut << "\t\t\t<sortmostrecentfirst>" << (sortMostRecentFirst_ ? "true" : "false") << "</sortmostrecentfirst>\n";
+        AbstractEqItem::writeXml(version, xmlOut);
 
-    for (const auto& eqHistory : eqHistoryList_) {
-        xmlOut << "\t\t\t<historyentry>\n";
-        xmlOut << "\t\t\t\t<historydate>" << Utils::xmlprotect(eqHistory.date_.toString()) << "</historydate>\n";
-        xmlOut << "\t\t\t\t<historytext>" << Utils::xmlprotect(eqHistory.text_) << "</historytext>\n";
-        xmlOut << "\t\t\t</historyentry>\n";
+        xmlOut << "\t\t\t<sortmostrecentfirst>" << (sortMostRecentFirst_ ? "true" : "false") << "</sortmostrecentfirst>\n";
+
+        for (const auto& eqHistory : eqHistoryList_) {
+            xmlOut << "\t\t\t<historyentry>\n";
+            xmlOut << "\t\t\t\t<historydate>" << Utils::xmlprotect(eqHistory.date_.toString()) << "</historydate>\n";
+            xmlOut << "\t\t\t\t<historytext>" << Utils::xmlprotect(eqHistory.text_) << "</historytext>\n";
+            xmlOut << "\t\t\t</historyentry>\n";
+        }
+        xmlOut << "\t\t</equipmenthistory>\n";
+    } else {
+        qDebug() << "EqHistory::writeXml - invalid file version:" << version;
     }
-    xmlOut << "\t\t</equipmenthistory>\n";
 }
 
 void
@@ -630,13 +663,13 @@ EqHistory::parseLegacyJSON(const QJsonObject& obj)
 // ---------------------------------------- Equipment Notes --------------------------------------------
 //
 
-EqNotes::EqNotes(const QUuid& equipmentRef, const QString& xmlRefName)
-    :   AbstractEqItem(equipmentRef, xmlRefName, EqItemType::EQ_NOTES)
+EqNotes::EqNotes(const QUuid& equipmentRef, const QString& xmlChartName, const QString& xmlTileName)
+    :   AbstractEqItem(equipmentRef, xmlChartName, xmlTileName, EqItemType::EQ_NOTES)
 {
 }
 
 EqNotes::EqNotes(const EqNotes& toCopy)
-    : AbstractEqItem(QUuid::createUuid(), toCopy.xmlRefName_, EqItemType::EQ_NOTES)
+    : AbstractEqItem(QUuid::createUuid(), toCopy.xmlChartName_, toCopy.xmlTileName_, EqItemType::EQ_NOTES)
 {
     notes_ = toCopy.notes_;
 }
@@ -646,21 +679,30 @@ EqNotes::parseXML(uint32_t version, const QString& qName, const QString& buffer)
 {
     if (version == 1) {
 
+        // the chart & tile names are stored and loaded from the equipment-perspectives.xml file,
+        // they are not imported from the equipment-data.xml.
+
         if (qName == "notes") notes_ = buffer;
+
     } else {
         qDebug() << "EqNotes::parseXML - invalid file version:" << version;
     }
 }
 
 void
-EqNotes::writeXml(QTextStream& xmlOut) const
+EqNotes::writeXml(uint32_t version, QTextStream& xmlOut) const
 {
-    xmlOut << "\t\t<equipmentnotes>\n";
+    if (version == 1) {
 
-    AbstractEqItem::writeXml(xmlOut);
+        xmlOut << "\t\t<equipmentnotes>\n";
 
-    xmlOut << "\t\t\t<notes>" << Utils::xmlprotect(notes_) << "</notes>\n";
-    xmlOut << "\t\t</equipmentnotes>\n";
+        AbstractEqItem::writeXml(version, xmlOut);
+
+        xmlOut << "\t\t\t<notes>" << Utils::xmlprotect(notes_) << "</notes>\n";
+        xmlOut << "\t\t</equipmentnotes>\n";
+    } else {
+        qDebug() << "EqNotes::writeXml - invalid file version:" << version;
+    }
 }
 
 void

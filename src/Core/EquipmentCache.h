@@ -42,7 +42,7 @@ class EquipmentCache : public QObject
         void operator=(EquipmentCache const&) = delete;
 
         AbstractEqItem* getEquipment(const QUuid& equipmentRef);
-        AbstractEqItem* createEquipment(const QUuid& equipmentRef, const QString& name, EqItemType equipmentType);
+        AbstractEqItem* createEquipment(const QUuid& equipmentRef, const QString& xmlChartName, const QString& xmlTileName, EqItemType equipmentType);
         AbstractEqItem* cloneEquipment(const QUuid& equipmentRef);
         bool deleteEquipment(const QUuid& equipmentRef);
 
@@ -75,7 +75,8 @@ class EquipmentXMLParser : public QXmlDefaultHandler
         QString buffer;
 
         // whilst parsing elements are stored here
-        QString name_;
+        QString xmlChartName_;
+        QString xmlTileName_;
         EqItemType typeToLoad_;
         bool loadingAsMetric_;
         uint32_t loadingVersion_;

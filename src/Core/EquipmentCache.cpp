@@ -66,14 +66,14 @@ EquipmentCache::getEquipment(const QUuid& equipmentRef)
 
 
 AbstractEqItem*
-EquipmentCache::createEquipment(const QUuid& equipmentRef, const QString& name, EqItemType equipmentType)
+EquipmentCache::createEquipment(const QUuid& equipmentRef, const QString& xmlChartName, const QString& xmlTileName, EqItemType equipmentType)
 {
     AbstractEqItem* eqItem = nullptr;
     switch (equipmentType) {
-        case EqItemType::EQ_ITEM: eqItem = new EqItem(equipmentRef, name); break;
-        case EqItemType::EQ_SUMMARY: eqItem = new EqSummary(equipmentRef, name); break;
-        case EqItemType::EQ_HISTORY: eqItem = new EqHistory(equipmentRef, name); break;
-        case EqItemType::EQ_NOTES: eqItem = new EqNotes(equipmentRef, name); break;
+        case EqItemType::EQ_ITEM: eqItem = new EqItem(equipmentRef, xmlChartName, xmlTileName); break;
+        case EqItemType::EQ_SUMMARY: eqItem = new EqSummary(equipmentRef, xmlChartName, xmlTileName); break;
+        case EqItemType::EQ_HISTORY: eqItem = new EqHistory(equipmentRef, xmlChartName, xmlTileName); break;
+        case EqItemType::EQ_NOTES: eqItem = new EqNotes(equipmentRef, xmlChartName, xmlTileName); break;
         default: {
             if(DBG) printf("EquipmentCache::createEquipment - Unsupported equipment type: %d in Equipment Cache\n",
                       static_cast<int>(equipmentType));
@@ -155,17 +155,17 @@ EquipmentCache::writeXML() const
 
     // begin document
     xmlOut << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n";
-
     xmlOut << "<!-- This file holds the equipment data information which cannot be derived from calculation -->\n";
-
     xmlOut << "<equipmentdata>\n";
 
     uint32_t version = 1;
     xmlOut << "\t<version>" << version << "</version>\n";
     xmlOut << "\t<uom>" << Utils::xmlprotect(GlobalContext::context()->useMetricUnits ? "metric" : "imperial") << "</uom>\n";
-    xmlOut << "\t<!-- date saved: " << QDateTime::currentDateTime().toString() << " -->\n";
-    xmlOut << "\t<!-- total number of items: " << allEqItems_.size() << " -->\n";
-    xmlOut << "\t<!-- garbage collected items: " << garbageItems_.size() << " -->\n";
+
+    // totalitems and garbageitems are only exported in the equipment-data.xml for tile health purposes.
+    xmlOut << "\t<totalitems>" << allEqItems_.size() << "</totalitems>\n";
+    xmlOut << "\t<garbageitems>" << garbageItems_.size() << "</garbageitems>\n";
+
     xmlOut << "\t<equipment>\n";
 
     // iterate over items, saving their information, unused items imported from the
@@ -174,7 +174,7 @@ EquipmentCache::writeXML() const
         if (garbageItems_.contains(itr->first)) {
             qWarning() << "EquipmentCache::writeXML - Discarding unused item:" << itr->first.toString();
         } else {
-            itr->second->writeXml(xmlOut);
+            itr->second->writeXml(version, xmlOut);
         }
     }
 
@@ -210,15 +210,19 @@ bool EquipmentXMLParser::endElement( const QString&, const QString&, const QStri
 {
     if (qName == "uom") loadingAsMetric_ = (Utils::unprotect(buffer.trimmed()) == "metric");
     else if (qName == "version") loadingVersion_ = Utils::unprotect(buffer.trimmed()).toUInt();
-    else if (qName == "eqtilename") name_ = Utils::unprotect(buffer.trimmed());
+
+    // totalitems and garbageitems are only in the equipment-data.xml for tile health purposes.
+    //else if (qName == "totalitems") totalItems_ = Utils::unprotect(buffer.trimmed());
+    //else if (qName == "garbageitems") garbageItems_ = Utils::unprotect(buffer.trimmed());
+
     else if (qName == "eqreference") {
         QUuid eqXmlRef = QUuid::fromString(Utils::unprotect(buffer.trimmed()));
 
         switch (typeToLoad_) {
-        case EqItemType::EQ_ITEM: itemToLoad_ = new EqItem(eqXmlRef, name_); break;
-        case EqItemType::EQ_SUMMARY: itemToLoad_ = new EqSummary(eqXmlRef, name_); break;
-        case EqItemType::EQ_HISTORY: itemToLoad_ = new EqHistory(eqXmlRef, name_); break;
-        case EqItemType::EQ_NOTES: itemToLoad_ = new EqNotes(eqXmlRef, name_); break;
+        case EqItemType::EQ_ITEM: itemToLoad_ = new EqItem(eqXmlRef); break;
+        case EqItemType::EQ_SUMMARY: itemToLoad_ = new EqSummary(eqXmlRef); break;
+        case EqItemType::EQ_HISTORY: itemToLoad_ = new EqHistory(eqXmlRef); break;
+        case EqItemType::EQ_NOTES: itemToLoad_ = new EqNotes(eqXmlRef); break;
         default: {
             itemToLoad_ = nullptr;
             qDebug() << "Unsupported tile type:" << static_cast<int>(typeToLoad_) << " in Equipment XML Parser";
@@ -244,22 +248,26 @@ bool EquipmentXMLParser::startElement( const QString&, const QString&, const QSt
     buffer.clear();
 
     if (name == "equipmentitem") {
-        name_.clear();
+        xmlChartName_.clear();
+        xmlTileName_.clear();
         itemToLoad_ = nullptr;
         typeToLoad_ = EqItemType::EQ_ITEM;
     }
     else if (name == "equipmenthistory") {
-        name_.clear();
+        xmlChartName_.clear();
+        xmlTileName_.clear();
         itemToLoad_ = nullptr;
         typeToLoad_ = EqItemType::EQ_HISTORY;
     }
     else if (name == "equipmentsummary") {
-        name_.clear();
+        xmlChartName_.clear();
+        xmlTileName_.clear();
         itemToLoad_ = nullptr;
         typeToLoad_ = EqItemType::EQ_SUMMARY;
     }
     else if (name == "equipmentnotes") {
-        name_.clear();
+        xmlChartName_.clear();
+        xmlTileName_.clear();
         itemToLoad_ = nullptr;
         typeToLoad_ = EqItemType::EQ_NOTES;
     }

@@ -87,6 +87,9 @@ EquipmentOverviewWindow::EquipmentOverviewWindow(Context* context, bool blank) :
     connect(showTime, SIGNAL(stateChanged(int)), this, SLOT(setShowTime(int)));
     connect(showElevation, SIGNAL(stateChanged(int)), this, SLOT(setShowElevation(int)));
     connect(showNotes, SIGNAL(stateChanged(int)), this, SLOT(setShowNotes(int)));
+
+    // connect GcWindow titleChanged() to this object's slot
+    connect(this, SIGNAL(titleChanged(QString)), this, SLOT(titleChanged(QString)));
 }
 
 EquipmentOverviewWindow::~EquipmentOverviewWindow()
@@ -308,6 +311,14 @@ EquipmentOverviewWindow::eqRecalculationComplete()
         foreach(ChartSpaceItem *item, space->allItems()) {
             item->update();
         }
+    }
+}
+
+void
+EquipmentOverviewWindow::titleChanged(QString title)
+{
+    foreach(ChartSpaceItem *item, space->allItems()) {
+        static_cast<CommonEqItem*>(item)->chartTitleChanged(title);
     }
 }
 

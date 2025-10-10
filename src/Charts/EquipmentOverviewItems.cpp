@@ -479,7 +479,8 @@ EquipmentOverviewItemConfig::dataChanged()
     case OverviewItemType::EQ_ITEM:
     {
         EqItem* mi = static_cast<EqItem*>(static_cast<EquipmentItem*>(item)->getAbsEqItem());
-        mi->xmlRefName_ = static_cast<CommonEqItem*>(item)->getXMLReference(item->parent, name->text());
+        mi->xmlChartName_ = item->parent->window->title();
+        mi->xmlTileName_ = name->text();
 
         mi->displayTotalDistance_ = displaytotal->currentIndex() ? true : false;
         mi->setNonGCDistance(nonGCDistance->text().toDouble());
@@ -524,7 +525,8 @@ EquipmentOverviewItemConfig::dataChanged()
     case OverviewItemType::EQ_SUMMARY:
     {
         EqSummary* mi = static_cast<EqSummary*>(static_cast<EquipmentSummary*>(item)->getAbsEqItem());
-        mi->xmlRefName_ = static_cast<CommonEqItem*>(item)->getXMLReference(item->parent, name->text());
+        mi->xmlChartName_ = item->parent->window->title();
+        mi->xmlTileName_ = name->text();
         mi->setEqLinkName(eqLinkName->text());
         mi->showActivitiesPerAthlete_ = eqCheckBox->isChecked();
     }
@@ -533,7 +535,8 @@ EquipmentOverviewItemConfig::dataChanged()
     case OverviewItemType::EQ_HISTORY:
     {
         EqHistory* mi = static_cast<EqHistory*>(static_cast<EquipmentHistory*>(item)->getAbsEqItem());
-        mi->xmlRefName_ = static_cast<CommonEqItem*>(item)->getXMLReference(item->parent, name->text());
+        mi->xmlChartName_ = item->parent->window->title();
+        mi->xmlTileName_ = name->text();
         mi->sortMostRecentFirst_ = eqCheckBox->isChecked();
 
         QVector<EqHistoryEntry> eqHistory;
@@ -550,7 +553,8 @@ EquipmentOverviewItemConfig::dataChanged()
     case OverviewItemType::EQ_NOTES:
     {
         EqNotes* mi = static_cast<EqNotes*>(static_cast<EquipmentNotes*>(item)->getAbsEqItem());
-        mi->xmlRefName_ = static_cast<CommonEqItem*>(item)->getXMLReference(item->parent, name->text());
+        mi->xmlChartName_ = item->parent->window->title();
+        mi->xmlTileName_ = name->text();
         mi->notes_ = notes->toPlainText();
     }
     break;
@@ -580,7 +584,14 @@ CommonEqItem::showEvent(QShowEvent*)
     itemGeometryChanged();
 }
 
-void CommonEqItem::displayTileEditMenu(const QPoint& pos)
+void
+CommonEqItem::chartTitleChanged(const QString& title)
+{
+    if (absEqItem_) absEqItem_->xmlChartName_ = title;
+}
+
+void
+CommonEqItem::displayTileEditMenu(const QPoint& pos)
 {
     QMenu popMenu;
 
@@ -752,12 +763,6 @@ CommonEqItem::configChanged(qint32 cfg) {
     }
 }
 
-QString
-CommonEqItem::getXMLReference(ChartSpace* parent, const QString& name)
-{
-    return "Chart:" + parent->window->title() + ", Equipment:" + name;
-}
-
 //
 // ---------------------------------------- Equipment Item --------------------------------------------
 //
@@ -773,11 +778,12 @@ EquipmentItem::EquipmentItem(ChartSpace* parent, const QString& name, const QUui
     if (absEqItem_ == nullptr) {
 
         // create a new cached equipment (user tile creation or chart import causing tile creation)
-        absEqItem_ = EquipmentCache::getInstance().createEquipment(equipmentRef_, name, EqItemType::EQ_ITEM);
+        absEqItem_ = EquipmentCache::getInstance().createEquipment(equipmentRef_, parent->window->title(), name, EqItemType::EQ_ITEM);
     }
 
-    // setup xml reference name
-    absEqItem_->xmlRefName_ = getXMLReference(parent, name);
+    // setup xml reference names
+    absEqItem_->xmlChartName_ = parent->window->title();
+    absEqItem_->xmlTileName_ = name;
 
     configwidget_ = new EquipmentOverviewItemConfig(this, parent->context);
     configwidget_->hide();
@@ -791,7 +797,9 @@ EquipmentItem::EquipmentItem(const EquipmentItem& toCopy)
     type = OverviewItemType::EQ_ITEM;
 
     absEqItem_ = EquipmentCache::getInstance().cloneEquipment(toCopy.getEquipmentRef());
-    absEqItem_->xmlRefName_ = getXMLReference(parent, name);
+    // setup xml reference names
+    absEqItem_->xmlChartName_ = parent->window->title();
+    absEqItem_->xmlTileName_ = name;
     equipmentRef_ = absEqItem_->getEquipmentRef();
 
     configwidget_ = new EquipmentOverviewItemConfig(this, parent->context);
@@ -1059,11 +1067,12 @@ EquipmentSummary::EquipmentSummary(ChartSpace* parent, const QString& name, cons
     if (absEqItem_ == nullptr) {
 
         // create a new cached equipment (user tile creation or chart import causing tile creation)
-        absEqItem_ = EquipmentCache::getInstance().createEquipment(equipmentRef_, name, EqItemType::EQ_SUMMARY);
+        absEqItem_ = EquipmentCache::getInstance().createEquipment(equipmentRef_, parent->window->title(), name, EqItemType::EQ_SUMMARY);
     }
 
-    // setup xml reference name
-    absEqItem_->xmlRefName_ = getXMLReference(parent, name);
+    // setup xml reference names
+    absEqItem_->xmlChartName_ = parent->window->title();
+    absEqItem_->xmlTileName_ = name;
 
     configwidget_ = new EquipmentOverviewItemConfig(this, parent->context);
     configwidget_->hide();
@@ -1077,7 +1086,9 @@ EquipmentSummary::EquipmentSummary(const EquipmentSummary& toCopy)
     type = OverviewItemType::EQ_SUMMARY;
 
     absEqItem_ = EquipmentCache::getInstance().cloneEquipment(toCopy.getEquipmentRef());
-    absEqItem_->xmlRefName_ = getXMLReference(parent, name);
+    // setup xml reference names
+    absEqItem_->xmlChartName_ = parent->window->title();
+    absEqItem_->xmlTileName_ = name;
     equipmentRef_ = absEqItem_->getEquipmentRef();
 
     configwidget_ = new EquipmentOverviewItemConfig(this, parent->context);
@@ -1167,11 +1178,12 @@ EquipmentHistory::EquipmentHistory(ChartSpace* parent, const QString& name, cons
     if (absEqItem_ == nullptr) {
 
         // create a new cached equipment (user tile creation or chart import causing tile creation)
-        absEqItem_ = EquipmentCache::getInstance().createEquipment(equipmentRef_, name, EqItemType::EQ_HISTORY);
+        absEqItem_ = EquipmentCache::getInstance().createEquipment(equipmentRef_, parent->window->title(), name, EqItemType::EQ_HISTORY);
     }
 
-    // setup xml reference name
-    absEqItem_->xmlRefName_ = getXMLReference(parent, name);
+    // setup xml reference names
+    absEqItem_->xmlChartName_ = parent->window->title();
+    absEqItem_->xmlTileName_ = name;
 
     configwidget_ = new EquipmentOverviewItemConfig(this, parent->context);
     configwidget_->hide();
@@ -1189,7 +1201,9 @@ EquipmentHistory::EquipmentHistory(const EquipmentHistory& toCopy)
     type = OverviewItemType::EQ_HISTORY;
 
     absEqItem_ = EquipmentCache::getInstance().cloneEquipment(toCopy.getEquipmentRef());
-    absEqItem_->xmlRefName_ = getXMLReference(parent, name);
+    // setup xml reference names
+    absEqItem_->xmlChartName_ = parent->window->title();
+    absEqItem_->xmlTileName_ = name;
     equipmentRef_ = absEqItem_->getEquipmentRef();
 
     configwidget_ = new EquipmentOverviewItemConfig(this, parent->context);
@@ -1294,11 +1308,12 @@ EquipmentNotes::EquipmentNotes(ChartSpace* parent, const QString& name, const QU
     if (absEqItem_ == nullptr) {
 
         // create a new cached equipment (user tile creation or chart import causing tile creation)
-        absEqItem_ = EquipmentCache::getInstance().createEquipment(equipmentRef_, name, EqItemType::EQ_NOTES);
+        absEqItem_ = EquipmentCache::getInstance().createEquipment(equipmentRef_, parent->window->title(), name, EqItemType::EQ_NOTES);
     }
 
-    // setup xml reference name
-    absEqItem_->xmlRefName_ = getXMLReference(parent, name);
+    // setup xml reference names
+    absEqItem_->xmlChartName_ = parent->window->title();
+    absEqItem_->xmlTileName_ = name;
 
     configwidget_ = new EquipmentOverviewItemConfig(this, parent->context);
     configwidget_->hide();
@@ -1316,7 +1331,9 @@ EquipmentNotes::EquipmentNotes(const EquipmentNotes& toCopy)
     type = OverviewItemType::EQ_NOTES;
 
     absEqItem_ = EquipmentCache::getInstance().cloneEquipment(toCopy.getEquipmentRef());
-    absEqItem_->xmlRefName_ = getXMLReference(parent, name);
+    // setup xml reference names
+    absEqItem_->xmlChartName_ = parent->window->title();
+    absEqItem_->xmlTileName_ = name;
     equipmentRef_ = absEqItem_->getEquipmentRef();
 
     configwidget_ = new EquipmentOverviewItemConfig(this, parent->context);

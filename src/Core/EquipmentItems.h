@@ -72,15 +72,16 @@ class AbstractEqItem : public QObject
 
         virtual void xmlUoM(bool /* loadingAsMetric */) {}
         virtual void parseXML(uint32_t version, const QString& qName, const QString& buffer) = 0;
-        virtual void writeXml(QTextStream& xmlOut) const;
+        virtual void writeXml(uint32_t version, QTextStream& xmlOut) const;
         virtual void parseLegacyJSON(const QJsonObject& obj) = 0;
 
-        QString xmlRefName_;
+        QString xmlChartName_;
+        QString xmlTileName_;
 
     protected:
 
         // Hide constructor to create an Abstract class
-        AbstractEqItem(const QUuid& equipmentRef, const QString& xmlRefName, EqItemType equipmentType);
+        AbstractEqItem(const QUuid& equipmentRef, const QString& xmlChartName, const QString& xmlTileName, EqItemType equipmentType);
 
         const EqItemType equipmentType_;
         const QUuid equipmentRef_;
@@ -91,7 +92,7 @@ class EqItem : public AbstractEqItem
     public:
 
         // create using existing Uuid
-        EqItem(const QUuid& equipmentRef, const QString& xmlRefName);
+        EqItem(const QUuid& equipmentRef, const QString& xmlChartName = QString(""), const QString& xmlTileName = QString(""));
 
         // clone EqItem, with new Uuid
         EqItem(const EqItem& toCopy);
@@ -127,7 +128,7 @@ class EqItem : public AbstractEqItem
 
         void xmlUoM(bool loadingAsMetric) override;
         void parseXML(uint32_t version, const QString& qName, const QString& buffer);
-        void writeXml(QTextStream& xmlOut) const override;
+        void writeXml(uint32_t version, QTextStream& xmlOut) const override;
         void parseLegacyJSON(const QJsonObject& obj) override;
 
         // primary state
@@ -176,7 +177,7 @@ class EqSummary : public AbstractEqItem
     public:
 
         // create using existing Uuid
-        EqSummary(const QUuid& equipmentRef, const QString& xmlRefName);
+        EqSummary(const QUuid& equipmentRef, const QString& xmlChartName = QString(""), const QString& xmlTileName = QString(""));
 
         // clone EqSummary, with new Uuid
         EqSummary(const EqSummary& toCopy);
@@ -202,7 +203,7 @@ class EqSummary : public AbstractEqItem
         const QMap<QString, uint32_t>& getAthleteActivityMap() const { return athleteActivityMap_; }
 
         void parseXML(uint32_t version, const QString& qName, const QString& buffer);
-        void writeXml(QTextStream& xmlOut) const override;
+        void writeXml(uint32_t version, QTextStream& xmlOut) const override;
         void parseLegacyJSON(const QJsonObject& obj) override;
 
         // primary state
@@ -257,7 +258,7 @@ class EqHistory : public AbstractEqItem
     public:
 
         // create using existing Uuid
-        EqHistory(const QUuid& equipmentRef, const QString& xmlRefName);
+        EqHistory(const QUuid& equipmentRef, const QString& xmlChartName = QString(""), const QString& xmlTileName = QString(""));
 
         // clone EqHistory, with new Uuid
         EqHistory(const EqHistory& toCopy);
@@ -267,7 +268,7 @@ class EqHistory : public AbstractEqItem
         virtual ~EqHistory() {}
 
         void parseXML(uint32_t version, const QString& qName, const QString& buffer);
-        void writeXml(QTextStream& xmlOut) const override;
+        void writeXml(uint32_t version, QTextStream& xmlOut) const override;
         void parseLegacyJSON(const QJsonObject& obj) override;
 
         bool sortMostRecentFirst_;
@@ -282,13 +283,13 @@ class EqNotes : public AbstractEqItem
     public:
 
         // create using existing Uuid
-        EqNotes(const QUuid& equipmentRef, const QString& xmlRefName);
+        EqNotes(const QUuid& equipmentRef, const QString& xmlChartName = QString(""), const QString& xmlTileName = QString(""));
 
         // clone EqNotes, with new Uuid
         EqNotes(const EqNotes& toCopy);
 
         void parseXML(uint32_t version, const QString& qName, const QString& buffer);
-        void writeXml(QTextStream& xmlOut) const override;
+        void writeXml(uint32_t version, QTextStream& xmlOut) const override;
         void parseLegacyJSON(const QJsonObject& obj) override;
 
         virtual ~EqNotes() {}
