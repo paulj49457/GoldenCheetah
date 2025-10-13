@@ -72,6 +72,8 @@ static int gc_opened=0;
 //
 QString gcroot;
 QApplication *application;
+QStringList removeFiles;
+QStringList removeDirectories;
 
 #ifdef GC_WANT_HTTP
 #include "APIWebService.h"
@@ -773,6 +775,19 @@ main(int argc, char *argv[])
     } while (restarting);
 
     delete application;
+
+    // need to wait for files to be closed/released before deleting them.
+    qDebug() << "Deleting:";
+
+    foreach (QString filePath, removeFiles) {
+        qDebug() << "file:" << filePath;
+        QFile(filePath).remove();
+    }
+
+    foreach (QString dirPath, removeDirectories) {
+        qDebug() << "Directory:" << dirPath;
+        QDir(dirPath).removeRecursively();
+    }
 
     return ret;
 }

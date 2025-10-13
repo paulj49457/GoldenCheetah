@@ -74,6 +74,27 @@ class DevicePage;
 class RemotePage;
 class SimBicyclePage;
 
+class ApplicationPage : public QWidget
+{
+    Q_OBJECT
+
+    public:
+        ApplicationPage(Context *context);
+        qint32 saveClicked();
+
+    public slots:
+
+    private:
+        Context *context;
+
+        QCheckBox *cleanImportedOnExit;
+        QCheckBox *cleanTmpActivitiesOnExit;
+        QCheckBox *cleanFileBackupOnExit;
+        QCheckBox *cleanQuarantineOnExit;
+        QCheckBox *cleanTempOnExit;
+        QCheckBox *autoConfirmImportDialog;
+};
+
 class GeneralPage : public QWidget
 {
     Q_OBJECT
