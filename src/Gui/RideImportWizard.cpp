@@ -979,14 +979,30 @@ RideImportWizard::abortClicked()
 
     // Process "FINISH"
     if (label == tr("Finish")) {
-       // phew. our work is done. -- lets force an update stats...
-       hide();
-       if (autoImportStealth) {
-           // inform the user that the work is done
-           QMessageBox::information(NULL, tr("Auto Import"), tr("Automatic import from defined directories is completed."));
-       }
-       done(0);
-       return;
+        // phew. our work is done. -- lets force an update stats...
+        hide();
+        if (autoImportStealth) {
+            // inform the user that the work is done
+            QMessageBox msgBox;
+            msgBox.setWindowTitle(tr("Auto Import"));
+            msgBox.setText (tr("Automatic import from defined directories is completed."));
+            msgBox.setIcon(QMessageBox::Information);
+
+            if (appsettings->value(NULL, GC_AUTO_CONFIRM_IMPORT_DIALOG, false).toBool()) {
+                QTimer timer(&msgBox);
+                timer.setInterval(2500);
+                timer.setSingleShot(true);
+                connect(&timer, &QTimer::timeout, [&msgBox]() { msgBox.close(); });
+                timer.start();
+                msgBox.exec();
+                timer.stop();
+
+            } else {
+                msgBox.exec();
+            }
+        }
+        done(0);
+        return;
     }
 
     // Process "SAVE"

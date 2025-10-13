@@ -60,6 +60,81 @@ extern ConfigDialog *configdialog_ptr;
 //
 // Main Config Page - tabs for each sub-page
 //
+ApplicationPage::ApplicationPage(Context *context) : context(context)
+{
+    // clean imported files on exit
+    cleanImportedOnExit = new QCheckBox(tr("Clean imported files on exit"), this);
+    cleanImportedOnExit->setChecked(appsettings->value(NULL, GC_CLEAN_IMPORTED_ON_EXIT, false).toBool());
+
+    // clean temporary activity files on exit
+    cleanTmpActivitiesOnExit = new QCheckBox(tr("Clean temporary files on exit"), this);
+    cleanTmpActivitiesOnExit->setChecked(appsettings->value(NULL, GC_CLEAN_TMP_ACTS_ON_EXIT, false).toBool());
+
+    // clean file backup directory on exit
+    cleanFileBackupOnExit = new QCheckBox(tr("Clean file backup directory on exit"), this);
+    cleanFileBackupOnExit->setChecked(appsettings->value(NULL, GC_CLEAN_FILE_BACKUP_ON_EXIT, false).toBool());
+
+    // clean quarantine directory on exit
+    cleanQuarantineOnExit = new QCheckBox(tr("Clean quarantine directory on exit"), this);
+    cleanQuarantineOnExit->setChecked(appsettings->value(NULL, GC_CLEAN_QUARANTINE_ON_EXIT, false).toBool());
+
+    // clean temporary directory on exit
+    cleanTempOnExit = new QCheckBox(tr("Clean temporary directory on exit"), this);
+    cleanTempOnExit->setChecked(appsettings->value(NULL, GC_CLEAN_TEMP_ON_EXIT, false).toBool());
+
+    // auto confirm import dialog
+    autoConfirmImportDialog = new QCheckBox(tr("Auto confirm import dialog"), this);
+    autoConfirmImportDialog->setChecked(appsettings->value(NULL, GC_AUTO_CONFIRM_IMPORT_DIALOG, false).toBool());
+
+    QFormLayout *form = new QFormLayout();
+    form->addItem(new QSpacerItem(0, 15 * dpiYFactor));
+    form->addRow(new QLabel(HLO + tr("Temporary File Management") + HLC));
+    form->addRow("", cleanImportedOnExit);
+    form->addRow("", cleanTmpActivitiesOnExit);
+    form->addRow("", cleanFileBackupOnExit);
+    form->addRow("", cleanQuarantineOnExit);
+    form->addRow("", cleanTempOnExit);
+    form->addItem(new QSpacerItem(0, 15 * dpiYFactor));
+    form->addRow(new QLabel(HLO + tr("User Notification Management") + HLC));
+    form->addRow("", autoConfirmImportDialog);
+
+    QScrollArea *scrollArea = new QScrollArea();
+    scrollArea->setWidget(centerLayoutInWidget(form, false));
+    scrollArea->setWidgetResizable(true);
+
+    QVBoxLayout *all = new QVBoxLayout(this);
+    all->addWidget(scrollArea);
+}
+
+qint32
+ApplicationPage::saveClicked()
+{
+    // remove imported files on exit
+    appsettings->setValue(GC_CLEAN_IMPORTED_ON_EXIT, cleanImportedOnExit->isChecked());
+
+    // clean temporary activity files on exit
+    appsettings->setValue(GC_CLEAN_TMP_ACTS_ON_EXIT, cleanTmpActivitiesOnExit->isChecked());
+
+    // clean file backup directory on exit
+    appsettings->setValue(GC_CLEAN_FILE_BACKUP_ON_EXIT, cleanFileBackupOnExit->isChecked());
+
+    // clean quarantine directory on exit
+    appsettings->setValue(GC_CLEAN_QUARANTINE_ON_EXIT, cleanQuarantineOnExit->isChecked());
+
+    // clean temporary directory on exit
+    appsettings->setValue(GC_CLEAN_TEMP_ON_EXIT, cleanTempOnExit->isChecked());
+
+    // auto confirm import dialog
+    appsettings->setValue(GC_AUTO_CONFIRM_IMPORT_DIALOG, autoConfirmImportDialog->isChecked());
+
+    qint32 state=0;
+
+    return state;
+}
+
+//
+// Main Config Page - tabs for each sub-page
+//
 GeneralPage::GeneralPage(Context *context) : context(context)
 {
     //
@@ -275,7 +350,7 @@ GeneralPage::GeneralPage(Context *context) : context(context)
     int startView = appsettings->value(NULL, GC_STARTUP_VIEW, "1").toInt();
     startupView->setCurrentIndex(startView);
 
-    QFormLayout *form = newQFormLayout();
+    QFormLayout *form = new QFormLayout();
     form->addRow(new QLabel(HLO + tr("Localization") + HLC));
     form->addRow(tr("Language"), langCombo);
     form->addRow(tr("Unit"), unitCombo);
