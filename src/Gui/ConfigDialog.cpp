@@ -70,6 +70,7 @@ ConfigDialog::ConfigDialog(QDir _home, Context *context) :
     static QIcon intervalIcon(QPixmap(":/images/stopwatch.png"));
     static QIcon measuresIcon(QPixmap(":/images/toolbar/main/measures.png"));
     static QIcon devicesIcon(QPixmap(":/images/devices/kickr.png"));
+    static QIcon applicationIcon(QPixmap(":images/toolbar/repair-tool.png"));
 
     // Setup the signal mapping so the right config
     // widget is displayed when the icon is clicked
@@ -126,6 +127,12 @@ ConfigDialog::ConfigDialog(QDir _home, Context *context) :
     connect(added, SIGNAL(triggered()), iconMapper, SLOT(map()));
     iconMapper->setMapping(added, 6);
 
+    added =head->addAction(applicationIcon, tr("Application"));
+    added->setCheckable(true);
+    added->setActionGroup(actionGroup);
+    connect(added, SIGNAL(triggered()), iconMapper, SLOT(map()));
+    iconMapper->setMapping(added, 7);
+
     // more space
     spacer = new QWidget(this);
     spacer->setAutoFillBackground(false);
@@ -170,6 +177,11 @@ ConfigDialog::ConfigDialog(QDir _home, Context *context) :
     HelpWhatsThis *trainHelp = new HelpWhatsThis(train);
     train->setWhatsThis(trainHelp->getWhatsThisText(HelpWhatsThis::Preferences_Training));
     pagesWidget->addWidget(train);
+
+    application = new ApplicationConfig(_home, context);
+    HelpWhatsThis *applicationHelp = new HelpWhatsThis(general);
+    application->setWhatsThis(applicationHelp->getWhatsThisText(HelpWhatsThis::Preferences_General));
+    pagesWidget->addWidget(application);
 
     QHBoxLayout *horizontalLayout = new QHBoxLayout;
     horizontalLayout->addWidget(pagesWidget, 1);
@@ -250,6 +262,7 @@ void ConfigDialog::saveClicked()
     changed |= train->saveClicked();
     changed |= interval->saveClicked();
     changed |= measures->saveClicked();
+    changed |= application->saveClicked();
 
     hide();
 
@@ -480,4 +493,22 @@ qint32 TrainConfig::saveClicked()
     state |= workoutTagManagerPage->saveClicked();
 
     return state;
+}
+
+// APPLICATION CONFIG
+ApplicationConfig::ApplicationConfig(QDir home, Context *context) :
+    home(home), context(context)
+{
+    applicationPage = new ApplicationPage(context);
+    QVBoxLayout *layout = new QVBoxLayout(this);
+    layout->addWidget(applicationPage);
+
+    layout->setSpacing(0);
+    layout->setContentsMargins(0,0,0,0);
+    setContentsMargins(0,0,0,0);
+}
+
+qint32 ApplicationConfig::saveClicked()
+{
+    return applicationPage->saveClicked();
 }

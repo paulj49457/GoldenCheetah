@@ -167,7 +167,13 @@
 #define GC_STARTUP_VIEW                 "<global-general>startupView"
 #define GC_PASSED_DIALOG_DEFAULT_ICONS  "<global-general>passedDialogDefaultIcons"
 
-
+// application config
+#define GC_CLEAN_IMPORTED_ON_EXIT       "<global-general>cleanimportedonexit"
+#define GC_CLEAN_TMP_ACTS_ON_EXIT       "<global-general>cleantmpactivitiesonexit"
+#define GC_CLEAN_FILE_BACKUP_ON_EXIT    "<global-general>cleanfilebackuponexit"
+#define GC_CLEAN_QUARANTINE_ON_EXIT     "<global-general>cleanquarantineonexit"
+#define GC_CLEAN_TEMP_ON_EXIT           "<global-general>cleantemponexit"
+#define GC_AUTO_CONFIRM_IMPORT_DIALOG   "<global-general>autoconfirmimportdialog"
 
 // Fit/Tcx Smart recording
 #define GC_GARMIN_SMARTRECORD           "<global-general>garminSmartRecord"
