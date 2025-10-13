@@ -137,6 +137,9 @@ extern double gl_major; // 1.x 2.x 3.x - we insist on 2.x or higher to enable Op
 // constants for gui
 static int gl_toolheight=28;
 
+extern QStringList removeFiles;
+extern QStringList removeDirectories; 
+
 MainWindow::MainWindow(const QDir &home)
 {
     /*----------------------------------------------------------------------
@@ -1114,6 +1117,45 @@ MainWindow::closeEvent(QCloseEvent* event)
 
     // main window is shutting down so prevent unnecessary equipment calculations
     EquipmentCalculator::getInstance().disableCalculations(true);
+
+    bool cleanImported(appsettings->value(NULL, GC_CLEAN_IMPORTED_ON_EXIT, false).toBool());
+    bool cleanTmpActivities(appsettings->value(NULL, GC_CLEAN_TMP_ACTS_ON_EXIT, false).toBool());
+    bool cleanFileBackup(appsettings->value(NULL, GC_CLEAN_FILE_BACKUP_ON_EXIT, false).toBool());
+    bool cleanQuarantine(appsettings->value(NULL, GC_CLEAN_QUARANTINE_ON_EXIT, false).toBool());
+    bool cleanTemp(appsettings->value(NULL, GC_CLEAN_TEMP_ON_EXIT, false).toBool());
+
+    // remove temp files & directories on exit (if required)
+    foreach(AthleteTab *tab, tabList) {
+
+        if (cleanImported) {
+            foreach (QString oldfile, tab->context->athlete->home->imports().entryList(QDir::Files)) {
+                removeFiles << tab->context->athlete->home->imports().absoluteFilePath(oldfile);
+            }
+        }
+        if (cleanTmpActivities) {
+            foreach (QString oldfile, tab->context->athlete->home->tmpActivities().entryList(QDir::Files)) {
+                removeFiles << tab->context->athlete->home->tmpActivities().absoluteFilePath(oldfile);
+            }
+        }
+        if (cleanFileBackup) {
+            foreach (QString oldfile, tab->context->athlete->home->fileBackup().entryList(QDir::Files)) {
+                removeFiles << tab->context->athlete->home->fileBackup().absoluteFilePath(oldfile);
+            }
+        }
+        if (cleanQuarantine) {
+            foreach (QString oldfile, tab->context->athlete->home->quarantine().entryList(QDir::Files)) {
+                removeFiles << tab->context->athlete->home->quarantine().absoluteFilePath(oldfile);
+            }
+        }
+        if (cleanTemp) {
+            foreach (QString oldfile, tab->context->athlete->home->temp().entryList(QDir::Files)) {
+                removeFiles << tab->context->athlete->home->temp().absoluteFilePath(oldfile);
+            }
+            foreach (QString oldpath, tab->context->athlete->home->temp().entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
+                removeDirectories << tab->context->athlete->home->temp().absoluteFilePath(oldpath);
+            }
+        }
+    }
 
     // close all the tabs .. if any refuse we need to ignore
     //                       the close event
