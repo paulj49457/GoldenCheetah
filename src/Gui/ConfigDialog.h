@@ -34,6 +34,25 @@ class QListWidgetItem;
 class QStackedWidget;
 class Context;
 
+// APPLICATION PAGE
+class ApplicationConfig : public QWidget
+{
+    Q_OBJECT
+
+    public:
+        ApplicationConfig(QDir home, Context *context);
+
+        ApplicationPage *applicationPage;
+
+    public slots:
+        qint32 saveClicked();
+
+    private:
+        QDir home;
+        Context *context;
+
+};
+
 // GENERAL PAGE
 class GeneralConfig : public QWidget
 {
@@ -190,6 +209,7 @@ class ConfigDialog : public QMainWindow
 
         // the config pages
         GeneralConfig *general;
+        ApplicationConfig *application;
         AppearanceConfig *appearance;
         DataConfig *data;
         MetricConfig *metric;
