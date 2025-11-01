@@ -20,7 +20,9 @@
 #define _GC_Context_h 1
 
 #include "TimeUtils.h" // for class DateRange
+#ifdef GC_HAS_TRAINING
 #include "RealtimeData.h" // for class RealtimeData
+#endif
 #include "CompareInterval.h" // what intervals are being compared?
 #include "CompareDateRange.h" // what intervals are being compared?
 #include "RideFile.h"
@@ -202,6 +204,7 @@ class Context : public QObject
         void setIndex(int i) { viewIndex = i; emit viewChanged(i); }
 
         // realtime signals
+#ifdef GC_HAS_TRAINING
         void notifyTelemetryUpdate(const RealtimeData &rtData) { telemetryUpdate(rtData); }
         void notifyErgFileSelected(ErgFile *x) { workout=x; ergFileSelected(x); ergFileSelected((ErgFileBase*)(x));}
         void notifyVideoSyncFileSelected(VideoSyncFile *x) { videosync=x; videoSyncFileSelected(x); }
@@ -212,6 +215,7 @@ class Context : public QObject
         void notifySelectWorkout(QString x) { selectWorkout(x); }
         void notifySelectWorkout(int idx ) { selectWorkout(idx); }
         void notifySelectVideoSync(QString x) { selectVideoSync(x); }
+#endif
         void notifySetNow(long x) { now = x; setNow(x); }
         long getNow() { return now; }
         void notifyNewLap() { emit newLap(); }
@@ -339,6 +343,7 @@ class Context : public QObject
         void rideClean(RideItem*);
 
         // realtime
+#ifdef GC_HAS_TRAINING
         void telemetryUpdate(RealtimeData rtData);
         void ergFileSelected(ErgFile *);
         void ergFileSelected(ErgFileBase *);
@@ -348,6 +353,7 @@ class Context : public QObject
         void selectWorkout(int idx); // ask traintool to select this
         void selectMedia(QString); // ask traintool to select this
         void selectVideoSync(QString); // ask traintool to select this
+#endif
         void setNow(long);
         void seek(long);
         void newLap();

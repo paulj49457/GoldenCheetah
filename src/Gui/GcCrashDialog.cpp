@@ -17,6 +17,7 @@
  */
 
 #include "GcCrashDialog.h"
+#include "Colors.h"
 #include "Settings.h"
 #include "GcUpgrade.h"
 #include <QtGui>
@@ -37,7 +38,9 @@
 #define COMPILER_VERSION QString("%1").arg(_MSC_VER)
 #endif
 
+#ifdef GC_HAS_TRAINING
 #include "VideoWindow.h"
+#endif
 
 #ifdef GC_HAVE_ICAL
 #include "ICalendar.h"

@@ -198,7 +198,9 @@ class MainWindow : public QMainWindow
         void selectTrends();
         void selectDiary();
         void selectAnalysis();
+#ifdef GC_HAS_TRAINING
         void selectTrain();
+#endif
 
         void setSubChartMenu();
         void setChartMenu(QMenu *);
@@ -231,6 +233,7 @@ class MainWindow : public QMainWindow
         void showRhoEstimator();
         void showVDOTCalculator();
 
+#ifdef GC_HAS_TRAINING
         // Training View
         void addDevice();
         void downloadTrainerDay();
@@ -240,7 +243,7 @@ class MainWindow : public QMainWindow
         void importWorkout();
         void clearWorkoutFilterBox();
         void fillinWorkoutFilterBox(const QString &filterText);
-
+#endif
         // Measures
         void setMeasuresMenu();
         void downloadMeasures(QAction *);

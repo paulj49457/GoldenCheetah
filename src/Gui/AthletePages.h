@@ -43,13 +43,17 @@
 #include <QGridLayout>
 #include <QProgressDialog>
 #include <QDialogButtonBox>
+#ifdef GC_HAS_TRAINING
 #include "DeviceTypes.h"
 #include "DeviceConfiguration.h"
+#endif
 #include "RideMetadata.h"
 #include "DataProcessor.h"
 #include "Season.h"
 #include "RideAutoImportConfig.h"
+#ifdef GC_HAS_TRAINING
 #include "RemoteControl.h"
+#endif
 #include "Measures.h"
 #include "StyledItemDelegates.h"
 
@@ -88,6 +92,8 @@ class MeasuresPage : public QWidget
     } b4;
 };
 
+#ifdef GC_HAS_TRAINING
+
 class WheelSizeCalculator : public QDialog
 {
     Q_OBJECT
@@ -108,6 +114,8 @@ class WheelSizeCalculator : public QDialog
     private slots:
         void calc();
 };
+
+#endif
 
 class AboutRiderPage : public QWidget
 {
@@ -132,9 +140,11 @@ class AboutRiderPage : public QWidget
         QDoubleSpinBox *height;
         QPushButton *avatarButton;
         QPixmap avatar;
+#ifdef GC_HAS_TRAINING
         QComboBox *crankLengthCombo;
         QSpinBox *wheelSizeEdit;
         QPushButton *wheelSizeCalculatorButton;
+#endif
 
     struct {
         double weight;
@@ -144,7 +154,9 @@ class AboutRiderPage : public QWidget
     } b4;
 
     private slots:
+#ifdef GC_HAS_TRAINING
         void openWheelSizeCalculator();
+#endif
 };
 
 class AboutModelPage : public QWidget

@@ -27,10 +27,14 @@
 #include "Settings.h"
 #include "UserMetricParser.h"
 #include "Colors.h"
+#ifdef GC_HAS_TRAINING
 #include "AddDeviceWizard.h"
+#endif
 #include "AddCloudWizard.h"
+#ifdef GC_HAS_TRAINING
 #include "DeviceTypes.h"
 #include "DeviceConfiguration.h"
+#endif
 #include "ColorButton.h"
 #include "SpecialFields.h"
 #include "DataProcessor.h"
@@ -51,7 +55,9 @@
 #include "CloudDBUserMetric.h"
 #endif
 #include "MainWindow.h"
+#ifdef GC_HAS_TRAINING
 extern ConfigDialog *configdialog_ptr;
+#endif
 
 #define HLO "<h4>"
 #define HLC "</h4>"
@@ -440,6 +446,7 @@ GeneralPage::browseAthleteDir()
     if (dir != "") athleteDirectory->setText(dir);  //only overwrite current dir, if a new was selected
 }
 
+#ifdef GC_HAS_TRAINING
 //
 // Realtime devices page
 //
@@ -1273,7 +1280,7 @@ WorkoutTagManagerPage::modelCleaner
     }
 }
 
-
+#endif
 
 //
 // Appearances page

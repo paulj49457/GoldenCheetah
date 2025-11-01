@@ -157,7 +157,9 @@ NavigationModel::action(bool redo, NavigationEvent event)
         case 0:  tab->context->mainWindow->selectTrends(); break;
         case 1:  tab->context->mainWindow->selectAnalysis(); break;
         case 2:  tab->context->mainWindow->selectDiary(); break;
+#ifdef GC_HAS_TRAINING
         case 3:  tab->context->mainWindow->selectTrain(); break;
+#endif
         }
     }
     break;

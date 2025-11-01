@@ -70,12 +70,14 @@ AthleteTab::AthleteTab(Context *context) : QWidget(context->mainWindow), context
     diaryControls->setContentsMargins(0,0,0,0);
     diaryView = new DiaryView(context, diaryControls);
 
+#ifdef GC_HAS_TRAINING
     // Train
     trainControls = new QStackedWidget(this);
     trainControls->setFrameStyle(QFrame::Plain | QFrame::NoFrame);
     trainControls->setCurrentIndex(0);
     trainControls->setContentsMargins(0,0,0,0);
     trainView = new TrainView(context, trainControls);
+#endif
 
     // although the views are created with analysis created first
     // we add them to the views and master controls in the old
@@ -84,12 +86,16 @@ AthleteTab::AthleteTab(Context *context) : QWidget(context->mainWindow), context
     views->addWidget(homeView);
     views->addWidget(analysisView);
     views->addWidget(diaryView);
+#ifdef GC_HAS_TRAINING
     views->addWidget(trainView);
+#endif
 
     masterControls->addWidget(homeControls);
     masterControls->addWidget(analysisControls);
     masterControls->addWidget(diaryControls);
+#ifdef GC_HAS_TRAINING
     masterControls->addWidget(trainControls);
+#endif
 
     // the dialog box for the chart settings
     chartSettings = new ChartSettings(this, masterControls);
@@ -114,7 +120,9 @@ AthleteTab::~AthleteTab()
 {
     delete analysisView;
     delete homeView;
+#ifdef GC_HAS_TRAINING
     delete trainView;
+#endif
     delete diaryView;
     delete views;
     delete nav;
@@ -125,7 +133,9 @@ AthleteTab::close()
 {
     analysisView->close();
     homeView->close();
+#ifdef GC_HAS_TRAINING
     trainView->close();
+#endif
     diaryView->close();
 }
 
@@ -150,7 +160,9 @@ void AthleteTab::setRide(RideItem*ride)
 {
     analysisView->setRide(ride);
     homeView->setRide(ride);
+#ifdef GC_HAS_TRAINING
     trainView->setRide(ride);
+#endif
     diaryView->setRide(ride);
 }
 
@@ -162,7 +174,9 @@ AthleteTab::view(int index)
         default:
         case 1 : return analysisView;
         case 2 : return diaryView;
+#ifdef GC_HAS_TRAINING
         case 3 : return trainView;
+#endif
     }
 }
 

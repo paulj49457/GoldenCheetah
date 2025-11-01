@@ -30,10 +30,14 @@
 #include "UserMetricParser.h"
 #include "Units.h"
 #include "Colors.h"
+#ifdef GC_HAS_TRAINING
 #include "AddDeviceWizard.h"
+#endif
 #include "AddCloudWizard.h"
+#ifdef GC_HAS_TRAINING
 #include "DeviceTypes.h"
 #include "DeviceConfiguration.h"
+#endif
 #include "ColorButton.h"
 #include "SpecialFields.h"
 #include "DataProcessor.h"
@@ -180,6 +184,8 @@ CredentialsPage::editClicked()
 // Wheel Size Calculator
 //
 
+#ifdef GC_HAS_TRAINING
+
 WheelSizeCalculator::WheelSizeCalculator
 (QWidget *parent)
 : QDialog(parent)
@@ -241,6 +247,7 @@ WheelSizeCalculator::getWheelSize
     return wheelSize;
 }
 
+#endif
 
 //
 // About me
@@ -299,6 +306,7 @@ AboutRiderPage::AboutRiderPage(QWidget *parent, Context *context) : QWidget(pare
     QRegion region(0, 0, avatarButton->width() - 1, avatarButton->height() - 1, QRegion::Ellipse);
     avatarButton->setMask(region);
 
+#ifdef GC_HAS_TRAINING
     //
     // Crank length - only used by PfPv chart (should move there!)
     //
@@ -346,12 +354,15 @@ AboutRiderPage::AboutRiderPage(QWidget *parent, Context *context) : QWidget(pare
     if (wheelSizeCalculatorButton->fontMetrics().inFontUcs4(calculatorGlyph[0])) {
         wheelSizeCalculatorButton->setText(QString::fromUcs4(calculatorGlyph.c_str()));
     }
+#endif
 
     QFormLayout *form = newQFormLayout();
 
+#ifdef GC_HAS_TRAINING
     QHBoxLayout *wheelSizeLayout = new QHBoxLayout();
     wheelSizeLayout->addWidget(wheelSizeEdit, form->fieldGrowthPolicy() == QFormLayout::AllNonFixedFieldsGrow ? 1 : 0);
     wheelSizeLayout->addWidget(wheelSizeCalculatorButton, 0);
+#endif
 
     form->setFormAlignment(Qt::AlignHCenter | Qt::AlignTop);
     form->addRow(tr("Nickname"), nickname);
@@ -360,9 +371,11 @@ AboutRiderPage::AboutRiderPage(QWidget *parent, Context *context) : QWidget(pare
     form->addRow(tr("Height"), height);
     form->addRow(tr("Weight"), weight);
     form->addItem(new QSpacerItem(1, 15 * dpiYFactor));
+#ifdef GC_HAS_TRAINING
     form->addRow("", new QLabel(tr("Bike")));
     form->addRow(tr("Crank Length"), crankLengthCombo);
     form->addRow(tr("Wheelsize"), wheelSizeLayout);
+#endif
 
     QVBoxLayout *avatarLayout = new QVBoxLayout();
     avatarLayout->addWidget(avatarButton);
@@ -393,10 +406,12 @@ AboutRiderPage::AboutRiderPage(QWidget *parent, Context *context) : QWidget(pare
     // care about tracking as it is used by metrics
     b4.weight = appsettings->cvalue(context->athlete->cyclist, GC_WEIGHT).toDouble();
     b4.height = appsettings->cvalue(context->athlete->cyclist, GC_HEIGHT).toDouble();
+#ifdef GC_HAS_TRAINING
     b4.wheel = wheelSize;
     b4.crank = crankLengthCombo->currentIndex();
 
     connect(wheelSizeCalculatorButton, SIGNAL(clicked()), this, SLOT(openWheelSizeCalculator()));
+#endif
     connect(avatarButton, SIGNAL(clicked()), this, SLOT(chooseAvatar()));
 }
 
@@ -430,6 +445,7 @@ AboutRiderPage::chooseAvatar()
     }
 }
 
+#ifdef GC_HAS_TRAINING
 void
 AboutRiderPage::openWheelSizeCalculator
 ()
@@ -441,6 +457,7 @@ AboutRiderPage::openWheelSizeCalculator
         wheelSizeEdit->setValue(wsDialog.getWheelSize());
     }
 }
+#endif
 
 qint32
 AboutRiderPage::saveClicked()
@@ -454,9 +471,10 @@ AboutRiderPage::saveClicked()
     appsettings->setCValue(context->athlete->cyclist, GC_WEIGHT, weight->value() * (metricUnits ? 1.0 : KG_PER_LB));
     appsettings->setCValue(context->athlete->cyclist, GC_HEIGHT, height->value() * (metricUnits ? 1.0/100.0 : CM_PER_INCH/100.0));
 
+#ifdef GC_HAS_TRAINING
     appsettings->setCValue(context->athlete->cyclist, GC_CRANKLENGTH, crankLengthCombo->currentText());
     appsettings->setCValue(context->athlete->cyclist, GC_WHEELSIZE, wheelSizeEdit->value());
-
+#endif
     qint32 state=0;
 
     // default weight changed ?
@@ -469,11 +487,12 @@ AboutRiderPage::saveClicked()
         state += CONFIG_ATHLETE;
     }
 
+#ifdef GC_HAS_TRAINING
     // general stuff changed ?
     if (b4.wheel != wheelSizeEdit->value() ||
         b4.crank != crankLengthCombo->currentIndex() )
         state += CONFIG_GENERAL;
-
+#endif
     return state;
 }
 

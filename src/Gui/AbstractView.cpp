@@ -24,7 +24,9 @@
 #include "BlankState.h"
 #include "Perspective.h"
 #include "GcWindowRegistry.h"
+#ifdef GC_HAS_TRAINING
 #include "TrainDB.h"
+#endif
 #include "RideNavigator.h"
 #include "MainWindow.h"
 #include "IdleTimer.h"
@@ -668,7 +670,9 @@ AbstractView::setBlank(BlankStatePage *blank)
     connect(context, SIGNAL(rideAdded(RideItem*)), this, SLOT(checkBlank()));
     connect(context, SIGNAL(rideDeleted(RideItem*)), this, SLOT(checkBlank()));
     connect(context, SIGNAL(configChanged(qint32)), this, SLOT(checkBlank()));
+#ifdef GC_HAS_TRAINING
     connect(trainDB, SIGNAL(dataChanged()), this, SLOT(checkBlank()));
+#endif
 
 }
 

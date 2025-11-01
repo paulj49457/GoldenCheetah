@@ -21,7 +21,9 @@
 #include "MainWindow.h"
 #include "Settings.h"
 #include "CloudService.h"
+#ifdef GC_HAS_TRAINING
 #include "TrainDB.h"
+#endif
 #include "Colors.h"
 #include "GcUpgrade.h"
 #include "IdleTimer.h"
@@ -624,8 +626,10 @@ main(int argc, char *argv[])
         // initialize Overview Items once the translator is installed
         OverviewItemConfig::registerItems();
 
+#ifdef GC_HAS_TRAINING
         // initialise the trainDB
         trainDB = new TrainDB(home);
+#endif
 
         // lets do what the command line says ...
         QVariant lastOpened;
@@ -748,7 +752,9 @@ main(int argc, char *argv[])
                         home.cdUp();
                         anyOpened = true;
                     } else {
+#ifdef GC_HAS_TRAINING
                         delete trainDB;
+#endif
                         terminate(0);
                     }
                 }
@@ -764,7 +770,9 @@ main(int argc, char *argv[])
 
             // choose cancel?
             if ((ret=d.exec()) != QDialog::Accepted) {
+#ifdef GC_HAS_TRAINING
                 delete trainDB;
+#endif
                 terminate(0);
             }
 
@@ -772,7 +780,9 @@ main(int argc, char *argv[])
             QString homeDir = home.canonicalPath();
             home.cd(d.choice());
             if (!home.exists()) {
+#ifdef GC_HAS_TRAINING
                 delete trainDB;
+#endif
                 terminate(0);
             }
 
@@ -785,15 +795,19 @@ main(int argc, char *argv[])
                 mainWindow->ridesAutoImport();
                 gc_opened++;
             } else {
+#ifdef GC_HAS_TRAINING
                 delete trainDB;
+#endif
                 terminate(0);
             }
         }
 
         ret=application->exec();
 
+#ifdef GC_HAS_TRAINING
         // close trainDB
         delete trainDB;
+#endif
 
         // reset QSettings (global & Athlete)
         appsettings->clearGlobalAndAthletes();

@@ -1861,7 +1861,9 @@ ImportChartDialog::importClicked()
             if (view == tr("Trends"))      { x=0; context->mainWindow->selectTrends(); }
             if (view == tr("Activities"))  { x=1; context->mainWindow->selectAnalysis(); }
             if (view == tr("Diary"))       { x=2; context->mainWindow->selectDiary(); }
+#ifdef GC_HAS_TRAINING
             if (view == tr("Train"))       { x=3; context->mainWindow->selectTrain(); }
+#endif
 
             // add to the currently selected tab and select if only adding one chart
             context->mainWindow->athleteTab()->view(x)->importChart(list[i], (list.count()==1));

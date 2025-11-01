@@ -29,13 +29,17 @@
 #include <QCheckBox>
 #include <QWizard>
 #include <QWizardPage>
+#include <QStackedWidget>
+#include <QFormLayout>
 
 #include "StyledItemDelegates.h"
+#ifdef GC_HAS_TRAINING
 #include "MultiFilterProxyModel.h"
 #include "WorkoutFilterBox.h"
 #include "ErgFile.h"
 #include "ErgFilePlot.h"
 #include "InfoWidget.h"
+#endif
 
 class Context;
 
@@ -92,7 +96,7 @@ class ManualActivityPageBasics : public QWizardPage
         QLabel *duplicateActivityLabel;
 };
 
-
+#ifdef GC_HAS_TRAINING
 class ManualActivityPageWorkout : public QWizardPage
 {
     Q_OBJECT
@@ -123,7 +127,7 @@ class ManualActivityPageWorkout : public QWizardPage
     private slots:
         void selectionChanged();
 };
-
+#endif
 
 class ManualActivityPageMetrics : public QWizardPage
 {

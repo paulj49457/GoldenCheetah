@@ -42,11 +42,13 @@
 #include "IntervalItem.h"
 #include "RideFile.h"
 #include "Settings.h"
+#ifdef GC_HAS_TRAINING
 #include "TrainerDay.h"
 #include "StravaRoutesDownload.h"
 #include "Library.h"
 #include "LibraryParser.h"
 #include "TrainDB.h"
+#endif
 #include "GcUpgrade.h"
 #include "HelpWhatsThis.h"
 #include "CsvRideFile.h"
@@ -68,9 +70,11 @@
 #include "GenerateHeatMapDialog.h"
 #include "BatchProcessingDialog.h"
 #include "MeasuresDownload.h"
+#ifdef GC_HAS_TRAINING
 #include "WorkoutWizard.h"
 #include "TrainerDayDownloadDialog.h"
 #include "AddDeviceWizard.h"
+#endif
 #include "Dropbox.h"
 #include "SixCycle.h"
 #include "OpenData.h"
@@ -92,7 +96,9 @@
 // SEARCH / FILTER
 #include "NamedSearch.h"
 #include "SearchFilterBox.h"
+#ifdef GC_HAS_TRAINING
 #include "WorkoutFilterBox.h"
+#endif
 
 // LTM CHART DRAG/DROP PARSE
 #include "LTMChartParser.h"
@@ -166,13 +172,14 @@ MainWindow::MainWindow(const QDir &home)
     setContentsMargins(0,0,0,0);
     setAcceptDrops(true);
 
+#ifdef GC_HAS_TRAINING
     Library::initialise(context->athlete->home->root());
     QNetworkProxyQuery npq(QUrl("http://www.google.com"));
     QList<QNetworkProxy> listOfProxies = QNetworkProxyFactory::systemProxyForQuery(npq);
     if (listOfProxies.count() > 0) {
         QNetworkProxy::setApplicationProxy(listOfProxies.first());
     }
-
+#endif
 #ifndef Q_OS_MAC
     fullScreen = new QTFullScreen(this);
 #endif
@@ -225,7 +232,9 @@ MainWindow::MainWindow(const QDir &home)
     sidebar->addItem(QImage(":sidebar/reflect.png"), tr("reflect"), GcSideBarBtnId::REFLECT_BTN, tr("Feature not implemented yet"));
     sidebar->setItemEnabled(GcSideBarBtnId::REFLECT_BTN, false);
 
+#ifdef GC_HAS_TRAINING
     sidebar->addItem(QImage(":sidebar/train.png"), tr("train"), GcSideBarBtnId::TRAIN_BTN, helpNewSideBar->getWhatsThisText(HelpWhatsThis::ScopeBar_Train));
+#endif
 
     sidebar->addStretch();
     sidebar->addItem(QImage(":sidebar/apps.png"), tr("apps"), GcSideBarBtnId::APPS_BTN, tr("Feature not implemented yet"));
@@ -350,6 +359,7 @@ MainWindow::MainWindow(const QDir &home)
     searchBox->setFixedWidth(400 * dpiXFactor);
     searchBox->setFixedHeight(gl_toolheight * dpiYFactor);
 
+#ifdef GC_HAS_TRAINING
     // Workout Filter Box
     workoutFilterBox = new WorkoutFilterBox(this, context);
 
@@ -358,6 +368,7 @@ MainWindow::MainWindow(const QDir &home)
     workoutFilterBox->setFixedHeight(gl_toolheight * dpiYFactor);
     HelpWhatsThis *helpWorkoutFilterBox = new HelpWhatsThis(workoutFilterBox);
     workoutFilterBox->setWhatsThis(helpWorkoutFilterBox->getWhatsThisText(HelpWhatsThis::ToolBar_WorkoutFilterBox));
+#endif
 
     QWidget *space = new QWidget(this);
     space->setAutoFillBackground(false);
@@ -380,7 +391,9 @@ MainWindow::MainWindow(const QDir &home)
     searchBox->setWhatsThis(helpSearchBox->getWhatsThisText(HelpWhatsThis::SearchFilterBox));
 
     head->addWidget(searchBox);
+#ifdef GC_HAS_TRAINING
     head->addWidget(workoutFilterBox);
+#endif
     space = new Spacer(this);
     space->setFixedWidth(5 *dpiYFactor);
     head->addWidget(space);
@@ -591,12 +604,13 @@ MainWindow::MainWindow(const QDir &home)
     optionsMenu->addAction(tr("VDOT and T-Pace Calculator..."), this, SLOT(showVDOTCalculator()));
 
     optionsMenu->addSeparator();
+#ifdef GC_HAS_TRAINING
     optionsMenu->addAction(tr("Create a new workout..."), this, SLOT(showWorkoutWizard()));
     optionsMenu->addAction(tr("Download workouts from TrainerDay..."), this, SLOT(downloadTrainerDay()));
     optionsMenu->addAction(tr("Download workouts from Strava Routes..."), this, SLOT(downloadStravaRoutes()));
     optionsMenu->addAction(tr("Import workouts, videos, videoSyncs..."), this, SLOT(importWorkout()));
     optionsMenu->addAction(tr("Scan disk for workouts, videos, videoSyncs..."), this, SLOT(manageLibrary()));
-
+#endif
     optionsMenu->addAction(tr("Create Heat Map..."), this, SLOT(generateHeatMap()));
     optionsMenu->addAction(tr("Export Metrics as CSV..."), this, SLOT(exportMetrics()));
 
@@ -657,7 +671,9 @@ MainWindow::MainWindow(const QDir &home)
     viewMenu->addSeparator();
     viewMenu->addAction(tr("Trends"), this, SLOT(selectTrends()));
     viewMenu->addAction(tr("Activities"), this, SLOT(selectAnalysis()));
+#ifdef GC_HAS_TRAINING
     viewMenu->addAction(tr("Train"), this, SLOT(selectTrain()));
+#endif
     viewMenu->addSeparator();
     viewMenu->addAction(tr("Import Perspective..."), this, SLOT(importPerspective()));
     viewMenu->addAction(tr("Export Perspective..."), this, SLOT(exportPerspective()));
@@ -912,7 +928,9 @@ MainWindow::exportPerspective()
     case 0:  current = currentAthleteTab->homeView; typedesc = "Trends"; break;
     case 1:  current = currentAthleteTab->analysisView; typedesc = "Analysis"; break;
     case 2:  current = currentAthleteTab->diaryView; typedesc = "Diary"; break;
+#ifdef GC_HAS_TRAINING
     case 3:  current = currentAthleteTab->trainView; typedesc = "Train"; break;
+#endif
     }
 
     // export the current perspective to a file
@@ -938,7 +956,9 @@ MainWindow::importPerspective()
     case 0:  current = currentAthleteTab->homeView; break;
     case 1:  current = currentAthleteTab->analysisView; break;
     case 2:  current = currentAthleteTab->diaryView; break;
+#ifdef GC_HAS_TRAINING
     case 3:  current = currentAthleteTab->trainView; break;
+#endif
     }
 
     // import a new perspective from a file
@@ -1167,12 +1187,13 @@ void MainWindow::showVDOTCalculator()
    VDOTcalculator->show();
 }
 
+#ifdef GC_HAS_TRAINING
 void MainWindow::showWorkoutWizard()
 {
    WorkoutWizard *ww = new WorkoutWizard(currentAthleteTab->context);
    ww->show();
 }
-
+#endif
 void MainWindow::resetWindowLayout()
 {
     QMessageBox msgBox;
@@ -1248,7 +1269,9 @@ MainWindow::sidebarSelected(GcSideBarBtnId id)
     case GcSideBarBtnId::TRENDS_BTN: selectTrends(); break;
     case GcSideBarBtnId::ACTIVITIES_BTN: selectAnalysis(); break;
     case GcSideBarBtnId::REFLECT_BTN: break; // reflect not written yet
+#ifdef GC_HAS_TRAINING
     case GcSideBarBtnId::TRAIN_BTN: selectTrain(); break;
+#endif
     case GcSideBarBtnId::APPS_BTN: break;// apps not written yet
     }
 }
@@ -1261,7 +1284,9 @@ MainWindow::selectAthlete()
     forward->hide();
     perspectiveSelector->hide();
     searchBox->hide();
+#ifdef GC_HAS_TRAINING
     workoutFilterBox->hide();
+#endif
 }
 
 void
@@ -1276,10 +1301,13 @@ MainWindow::selectAnalysis()
     forward->show();
     perspectiveSelector->show();
     searchBox->show();
+#ifdef GC_HAS_TRAINING
     workoutFilterBox->hide();
+#endif
     setToolButtons();
 }
 
+#ifdef GC_HAS_TRAINING
 void
 MainWindow::selectTrain()
 {
@@ -1295,6 +1323,7 @@ MainWindow::selectTrain()
     workoutFilterBox->show();
     setToolButtons();
 }
+#endif
 
 void
 MainWindow::selectDiary()
@@ -1307,7 +1336,9 @@ MainWindow::selectDiary()
     forward->show();
     perspectiveSelector->show();
     searchBox->show();
+#ifdef GC_HAS_TRAINING
     workoutFilterBox->hide();
+#endif
     setToolButtons();
 }
 
@@ -1323,7 +1354,9 @@ MainWindow::selectTrends()
     forward->show();
     perspectiveSelector->show();
     searchBox->show();
+#ifdef GC_HAS_TRAINING
     workoutFilterBox->hide();
+#endif
     setToolButtons();
 }
 
@@ -1409,7 +1442,9 @@ MainWindow::resetPerspective(int view, bool force)
     case 0:  current = currentAthleteTab->homeView; break;
     case 1:  current = currentAthleteTab->analysisView; break;
     case 2:  current = currentAthleteTab->diaryView; break;
+#ifdef GC_HAS_TRAINING
     case 3:  current = currentAthleteTab->trainView; break;
+#endif
     }
 
     // set the perspective
@@ -1431,7 +1466,9 @@ MainWindow::perspectiveSelected(int index)
     case 0:  current = currentAthleteTab->homeView; break;
     case 1:  current = currentAthleteTab->analysisView; break;
     case 2:  current = currentAthleteTab->diaryView; break;
+#ifdef GC_HAS_TRAINING
     case 3:  current = currentAthleteTab->trainView; break;
+#endif
     }
 
     // which perspective is currently being shown?
@@ -1444,7 +1481,9 @@ MainWindow::perspectiveSelected(int index)
         case 0:  current->perspectiveSelected(index); break;
         case 1:  current->perspectiveSelected(index); break;
         case 2:  current->perspectiveSelected(index); break;
+#ifdef GC_HAS_TRAINING
         case 3:  current->perspectiveSelected(index); break;
+#endif
         }
 
     } else {
@@ -1501,7 +1540,9 @@ MainWindow::perspectivesChanged()
     case 0:  current = currentAthleteTab->homeView; break;
     case 1:  current = currentAthleteTab->analysisView; break;
     case 2:  current = currentAthleteTab->diaryView; break;
+#ifdef GC_HAS_TRAINING
     case 3:  current = currentAthleteTab->trainView; break;
+#endif
     }
 
     // which perspective is currently being selected (before we go setting the combobox)
@@ -1594,9 +1635,11 @@ MainWindow::dropEvent(QDropEvent *event)
         } else if (Utils::isImage(filename)) {
             images << filename;
 
+#ifdef GC_HAS_TRAINING
         // Look for Workout files only in Train view
         } else if (currentAthleteTab->currentView() == 3 && ErgFile::isWorkout(filename)) {
             workouts << filename;
+#endif
         } else {
             filenames.append(filename);
         }
@@ -1624,8 +1667,10 @@ MainWindow::dropEvent(QDropEvent *event)
     // are there any .gcharts to import?
     if (list.count())  importCharts(list);
 
+#ifdef GC_HAS_TRAINING
     // import workouts
     if (workouts.count()) Library::importFiles(currentAthleteTab->context, workouts, LibraryBatchImportConfirmation::forcedDialog);
+#endif
 
     // import images (these will be attached to the current ride)
     if (images.count()) importImages(images);
@@ -1923,6 +1968,7 @@ MainWindow::deleteRide()
 /*----------------------------------------------------------------------
  * Realtime Devices and Workouts
  *--------------------------------------------------------------------*/
+#ifdef GC_HAS_TRAINING
 void
 MainWindow::addDevice()
 {
@@ -1932,6 +1978,7 @@ MainWindow::addDevice()
     p->show();
 
 }
+#endif
 
 /*----------------------------------------------------------------------
  * Cyclists
@@ -2009,8 +2056,10 @@ MainWindow::loadCompleted(QString name, Context *context)
     // to show it to avoid crappy paint artefacts
     showTabbar(true);
 
+#ifdef GC_HAS_TRAINING
     // clear the workout filter box text
     workoutFilterBox->clear();
+#endif
 
     // tell everyone
     currentAthleteTab->context->notifyLoadDone(name, context);
@@ -2271,7 +2320,9 @@ MainWindow::saveGCState(Context *context)
     context->showLowbar = showhideLowbar->isChecked();
     context->showToolbar = showhideToolbar->isChecked();
     context->searchText = searchBox->text();
+#ifdef GC_HAS_TRAINING
     context->workoutFilterText = workoutFilterBox->text();
+#endif
     context->style = styleAction->isChecked();
 }
 
@@ -2299,8 +2350,10 @@ MainWindow::restoreGCState(Context *context)
     showLowbar(context->showLowbar);
     searchBox->setContext(context);
     searchBox->setText(context->searchText);
+#ifdef GC_HAS_TRAINING
     workoutFilterBox->setContext(context);
     workoutFilterBox->setText(context->workoutFilterText);
+#endif
 }
 
 void
@@ -2363,6 +2416,7 @@ MainWindow::exportMetrics()
 /*----------------------------------------------------------------------
  * Import Workout from Disk
  *--------------------------------------------------------------------*/
+#ifdef GC_HAS_TRAINING
 void
 MainWindow::importWorkout()
 {
@@ -2453,6 +2507,7 @@ MainWindow::manageLibrary()
     LibrarySearchDialog *search = new LibrarySearchDialog(currentAthleteTab->context);
     search->exec();
 }
+#endif
 
 /*----------------------------------------------------------------------------
  * Working with Cloud Services

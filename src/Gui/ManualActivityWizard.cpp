@@ -31,7 +31,9 @@
 #include <cmath>
 
 #include "Context.h"
+#ifdef GC_HAS_TRAINING
 #include "TrainDB.h"
+#endif
 #include "Colors.h"
 #include "Athlete.h"
 #include "RideCache.h"
@@ -85,7 +87,9 @@ ManualActivityWizard::ManualActivityWizard
     setPixmap(ICON_TYPE, svgAsColoredPixmap(IconManager::instance().getDefault(), QSize(ICON_SIZE * dpiXFactor, ICON_SIZE * dpiYFactor), ICON_MARGIN * dpiXFactor, ICON_COLOR));
 
     setPage(PageBasics, new ManualActivityPageBasics(context, plan, when));
+#ifdef GC_HAS_TRAINING
     setPage(PageWorkout, new ManualActivityPageWorkout(context));
+#endif
     setPage(PageMetrics, new ManualActivityPageMetrics(context, plan));
     setPage(PageSummary, new ManualActivityPageSummary(plan));
 
@@ -282,11 +286,13 @@ ManualActivityPageBasics::ManualActivityPageBasics
     // rich text hangs 'fontd' for some users
     notesEdit->setAcceptRichText(false);
 
+#ifdef GC_HAS_TRAINING
     QLabel *woTypeLabel = new QLabel(tr("Type") + MANDATORY);
     QComboBox *woTypeEdit = new QComboBox();
     woTypeEdit->addItem(tr("Workout (Train mode)"));
     woTypeEdit->addItem(tr("Manual Entry"));
     woTypeEdit->setCurrentIndex(1);
+
     if (plan) {
 
 #if QT_VERSION >= 0x060000
@@ -301,7 +307,7 @@ ManualActivityPageBasics::ManualActivityPageBasics
             }
         });
     }
-
+#endif
     QLabel *objectiveLabel = new QLabel(tr("Objective"));
     QLineEdit *objectiveEdit = new QLineEdit();
 
@@ -323,8 +329,10 @@ ManualActivityPageBasics::ManualActivityPageBasics
     workoutCodeEdit->setVisible(! plan);
     rpeLabel->setVisible(! plan);
     rpeEdit->setVisible(! plan);
+#ifdef GC_HAS_TRAINING
     woTypeLabel->setVisible(plan);
     woTypeEdit->setVisible(plan);
+#endif
     objectiveLabel->setVisible(plan);
     objectiveEdit->setVisible(plan);
 
@@ -342,13 +350,17 @@ ManualActivityPageBasics::ManualActivityPageBasics
     registerField("rpe", rpeEdit);
     registerField("objective", objectiveEdit);
     registerField("notes", notesEdit, "plainText", SIGNAL(textChanged()));
+#ifdef GC_HAS_TRAINING
     registerField("woType", woTypeEdit);
+#endif
 
     QFormLayout *form = newQFormLayout();
     form->addRow(tr("Date") + MANDATORY, dateEdit);
     form->addRow(tr("Time") + MANDATORY, timeEdit);
     form->addRow("", duplicateActivityLabel);
+#ifdef GC_HAS_TRAINING
     form->addRow(woTypeLabel, woTypeEdit);
+#endif
     form->addRow(tr("Sport") + MANDATORY, sportEdit);
     form->addRow(subSportLabel, subSportEdit);
     form->addRow(workoutCodeLabel, workoutCodeEdit);
@@ -395,7 +407,11 @@ int
 ManualActivityPageBasics::nextId
 () const
 {
+#ifdef GC_HAS_TRAINING
     return (plan && field("woType").toInt() == 0) ? ManualActivityWizard::PageWorkout : ManualActivityWizard::PageMetrics;
+#else
+    return ManualActivityWizard::PageMetrics;
+#endif
 }
 
 
@@ -427,6 +443,8 @@ ManualActivityPageBasics::sportsChanged
     wizard()->setPixmap(ICON_TYPE, svgAsColoredPixmap(path, QSize(ICON_SIZE * dpiXFactor, ICON_SIZE * dpiYFactor), ICON_MARGIN * dpiXFactor, ICON_COLOR));
 }
 
+
+#ifdef GC_HAS_TRAINING
 
 ////////////////////////////////////////////////////////////////////////////////
 // ManualActivityPageWorkout
@@ -731,7 +749,7 @@ ManualActivityPageWorkout::cleanupPage
     workoutTree->setCurrentIndex(QModelIndex());
     QWizardPage::cleanupPage();
 }
-
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 // ManualActivityPageMetrics

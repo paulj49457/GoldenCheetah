@@ -20,7 +20,9 @@
 #define _GC_Views_h 1
 
 #include "AbstractView.h"
+#ifdef GC_HAS_TRAINING
 class TrainSidebar;
+#endif
 class AnalysisSidebar;
 class IntervalSidebar;
 class QDialog;
@@ -79,6 +81,7 @@ class DiaryView : public AbstractView
 
 };
 
+#ifdef GC_HAS_TRAINING
 class TrainView : public AbstractView
 {
     Q_OBJECT
@@ -106,6 +109,7 @@ class TrainView : public AbstractView
 private slots:
         void onAutoHideChanged(bool enabled);
 };
+#endif
 
 class LTMSidebar;
 class TrendsView : public AbstractView

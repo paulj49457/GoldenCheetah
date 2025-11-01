@@ -473,6 +473,7 @@ WPrime::setWatts(Context *context, QVector<int>&wattsArray, int CP, int WPRIME)
                                  // so lets not exacerbate the problem - truncate
 }
 
+#ifdef GC_HAS_TRAINING
 void
 WPrime::setErg(ErgFile *input)
 {
@@ -593,6 +594,7 @@ WPrime::setErg(ErgFile *input)
     if (minY < -30000) minY = 0; // the data is definitely out of bounds!
                                  // so lets not exacerbate the problem - truncate
 }
+#endif
 
 double
 WPrime::PCP()

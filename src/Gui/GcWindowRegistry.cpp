@@ -26,7 +26,9 @@
 #include "CriticalPowerWindow.h"
 #include "HistogramWindow.h"
 #include "LTMWindow.h"
+#ifdef GC_HAS_TRAINING
 #include "VideoWindow.h"
+#endif
 #include "PfPvWindow.h"
 #include "HrPwWindow.h"
 #include "RideEditor.h"
@@ -35,6 +37,7 @@
 #include "ScatterWindow.h"
 #include "MetadataWindow.h"
 #include "TreeMapWindow.h"
+#ifdef GC_HAS_TRAINING
 #include "DialWindow.h"
 #include "ElevationChartWindow.h"
 #include "RealtimePlotWindow.h"
@@ -43,6 +46,7 @@
 #include "WorkoutWindow.h"
 #include "WebPageWindow.h"
 #include "LiveMapWebPageWindow.h"
+#endif
 #include "PlanningCalendarWindow.h"
 #ifdef GC_WANT_R
 #include "RChart.h"
@@ -64,7 +68,11 @@ GcWindowRegistry* GcWindows;
 void
 GcWindowRegistry::initialize()
 {
+#ifdef GC_HAS_TRAINING
   static GcWindowRegistry GcWindowsInit[36] = {
+#else
+  static GcWindowRegistry GcWindowsInit[27] = {
+#endif
     // name                     GcWinID
     { VIEW_TRENDS|VIEW_DIARY, tr("Season Overview"),GcWindowTypes::OverviewTrends },
     { VIEW_TRENDS|VIEW_DIARY, tr("Blank Overview "),GcWindowTypes::OverviewTrendsBlank },
@@ -99,6 +107,7 @@ GcWindowRegistry::initialize()
     //{ VIEW_TRENDS|VIEW_DIARY, tr("Calendar"),GcWindowTypes::Diary },
     { VIEW_TRENDS|VIEW_DIARY, tr("Navigator"), GcWindowTypes::ActivityNavigator },
     //{ VIEW_DIARY|VIEW_TRENDS, tr("Summary "), GcWindowTypes::DateRangeSummary }, // DEPRECATED IN V3.6
+#ifdef GC_HAS_TRAINING
     { VIEW_TRAIN, tr("Telemetry"),GcWindowTypes::DialWindow },
     { VIEW_TRAIN, tr("Workout"),GcWindowTypes::WorkoutPlot },
     { VIEW_TRAIN, tr("Realtime"),GcWindowTypes::RealtimePlot },
@@ -108,6 +117,9 @@ GcWindowRegistry::initialize()
     { VIEW_TRAIN, tr("Live Map"),GcWindowTypes::LiveMapWebPageWindow },
     { VIEW_TRAIN, tr("Elevation Chart"),GcWindowTypes::ElevationChart },
     { VIEW_ANALYSIS|VIEW_TRENDS|VIEW_TRAIN, tr("Web page"),GcWindowTypes::WebPageWindow },
+#else
+    { VIEW_ANALYSIS|VIEW_TRENDS, tr("Web page"),GcWindowTypes::WebPageWindow },
+#endif
     { VIEW_TRENDS, tr("Planning Calendar"),GcWindowTypes::Calendar },
     { 0, "", GcWindowTypes::None }};
   // initialize the global registry
@@ -198,17 +210,21 @@ GcWindowRegistry::newGcWindow(GcWinID id, Context *context)
     case GcWindowTypes::Scatter: returning = new ScatterWindow(context); break;
     case GcWindowTypes::TreeMap: returning = new TreeMapWindow(context); break;
     case GcWindowTypes::WeeklySummary: returning = NULL; break; // deprecated
+#ifdef GC_HAS_TRAINING
 #ifdef GC_VIDEO_NONE
     case GcWindowTypes::VideoPlayer: returning = new GcChartWindow(context); break;
 #else
     case GcWindowTypes::VideoPlayer: returning = new VideoWindow(context); break;
 #endif
     case GcWindowTypes::DialWindow: returning = new DialWindow(context); break;
+#endif
     case GcWindowTypes::MetadataWindow: returning = new MetadataWindow(context); break;
+#ifdef GC_HAS_TRAINING
     case GcWindowTypes::RealtimeControls: returning = new GcChartWindow(context); break;
     case GcWindowTypes::RealtimePlot: returning = new RealtimePlotWindow(context); break;
     case GcWindowTypes::SpinScanPlot: returning = new SpinScanPlotWindow(context); break;
     case GcWindowTypes::WorkoutPlot: returning = new WorkoutPlotWindow(context); break;
+#endif
     case GcWindowTypes::MapWindow:
     case GcWindowTypes::StreetViewWindow:
         returning = new GcChartWindow(context); break;
@@ -219,11 +235,13 @@ GcWindowRegistry::newGcWindow(GcWinID id, Context *context)
     case GcWindowTypes::RideMapWindow: returning = new RideMapWindow(context, RideMapWindow::OSM); break; // Deprecated Bing, default to OSM
 
     case GcWindowTypes::ActivityNavigator: returning = new RideNavigator(context); break;
+#ifdef GC_HAS_TRAINING
     case GcWindowTypes::WorkoutWindow: returning = new WorkoutWindow(context); break;
 
     case GcWindowTypes::WebPageWindow: returning = new WebPageWindow(context); break;
     case GcWindowTypes::LiveMapWebPageWindow: returning = new LiveMapWebPageWindow(context); break;
     case GcWindowTypes::ElevationChart: returning = new ElevationChartWindow(context); break;
+#endif
 #if 0 // not till v4.0
     case GcWindowTypes::RouteSegment: returning = new RouteWindow(context); break;
 #else

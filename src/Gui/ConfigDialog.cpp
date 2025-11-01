@@ -20,15 +20,18 @@
 #include <QSettings>
 
 #include "Context.h"
+#ifdef GC_HAS_TRAINING
 #include "TrainDB.h"
+#endif
 #include "Athlete.h"
 #include "ConfigDialog.h"
 #include "RideCache.h"
 #include "Pages.h"
 #include "Settings.h"
 #include "HelpWhatsThis.h"
-
+#ifdef GC_HAS_TRAINING
 #include "AddDeviceWizard.h"
+#endif
 #include "MainWindow.h"
 
 extern bool restarting; //its actually in main.cpp
@@ -119,12 +122,13 @@ ConfigDialog::ConfigDialog(QDir _home, Context *context) :
     connect(added, SIGNAL(triggered()), iconMapper, SLOT(map()));
     iconMapper->setMapping(added, 5);
 
-
+#ifdef GC_HAS_TRAINING
     added =head->addAction(devicesIcon, tr("Training"));
     added->setCheckable(true);
     added->setActionGroup(actionGroup);
     connect(added, SIGNAL(triggered()), iconMapper, SLOT(map()));
     iconMapper->setMapping(added, 6);
+#endif
 
     // more space
     spacer = new QWidget(this);
@@ -166,10 +170,12 @@ ConfigDialog::ConfigDialog(QDir _home, Context *context) :
     measures->setWhatsThis(measuresHelp->getWhatsThisText(HelpWhatsThis::Preferences_Measures));
     pagesWidget->addWidget(measures);
 
+#ifdef GC_HAS_TRAINING
     train = new TrainConfig(_home, context);
     HelpWhatsThis *trainHelp = new HelpWhatsThis(train);
     train->setWhatsThis(trainHelp->getWhatsThisText(HelpWhatsThis::Preferences_Training));
     pagesWidget->addWidget(train);
+#endif
 
     QHBoxLayout *horizontalLayout = new QHBoxLayout;
     horizontalLayout->addWidget(pagesWidget, 1);
@@ -247,7 +253,9 @@ void ConfigDialog::saveClicked()
     changed |= appearance->saveClicked();
     changed |= metric->saveClicked();
     changed |= data->saveClicked();
+#ifdef GC_HAS_TRAINING
     changed |= train->saveClicked();
+#endif
     changed |= interval->saveClicked();
     changed |= measures->saveClicked();
 
@@ -443,6 +451,7 @@ MeasuresConfig::resetClicked
     measuresPage->resetMeasuresClicked();
 }
 
+#ifdef GC_HAS_TRAINING
 // TRAIN CONFIG
 TrainConfig::TrainConfig(QDir home, Context *context) :
     home(home), context(context)
@@ -480,3 +489,4 @@ qint32 TrainConfig::saveClicked()
 
     return state;
 }
+#endif

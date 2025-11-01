@@ -21,15 +21,19 @@
 #include "Colors.h"
 #include "GcUpgrade.h"
 #include "Athlete.h"
+#ifdef GC_HAS_TRAINING
 #include "VideoWindow.h"
 #include "ErgFile.h"
+#endif
 #include "RideFile.h"
 #include "JsonRideFile.h"
 #include "Context.h"
 #include "DataProcessor.h"
 #include "MainWindow.h"
+#ifdef GC_HAS_TRAINING
 #include "TrainDB.h"
 #include "Library.h"
+#endif
 #include "CloudService.h"
 
 #include <QDebug>
@@ -360,8 +364,9 @@ GcUpgrade::upgrade(const QDir &home)
     //----------------------------------------------------------------------
 
     if (last < VERSION33_BUILD) {
-
+#ifdef GC_HAS_TRAINING
         trainDB->upgradeDefaultEntriesWorkout();
+#endif
     }
 
 
@@ -625,6 +630,7 @@ GcUpgrade::upgrade(const QDir &home)
         upgradeLog->append(QString(tr("%1 activity backup (.BAK) files moved to subdirectory: %2 - %3 failed" ))
                   .arg(QString::number(ok)).arg(newHome.fileBackup().dirName()).arg(QString::number(fail)),2);
 
+#ifdef GC_HAS_TRAINING
         // 3.6 now sort the rest of the files (extension checks are re-use)
         MediaHelper mediaFile;
         ok = 0; fail = 0;
@@ -646,6 +652,7 @@ GcUpgrade::upgrade(const QDir &home)
         upgradeLog->append(QString(tr("%1 media and workout files moved to subdirectory: \\%2 - %3 failed"))
                   .arg(QString::number(ok)).arg(newHome.workouts().dirName()).arg(QString::number(fail)),2);
 
+#endif
         // the conversion of all activities to .json is done in "lateUpgrade" - since the prerequisites
         // on the "context" setup are not fulfilled at this early stage
 
@@ -820,6 +827,8 @@ GcUpgrade::upgradeLate(Context *context)
 
     }
 
+#ifdef GC_HAS_TRAINING
+
     if (trainDB->needsUpgrade()) {
         QStringList files = trainDB->getMigrateableWorkoutPaths();
         files << trainDB->getMigrateableVideoPaths();
@@ -829,7 +838,7 @@ GcUpgrade::upgradeLate(Context *context)
         }
         trainDB->dropLegacyTables();
     }
-
+#endif
     return 0;
 }
 

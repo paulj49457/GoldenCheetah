@@ -28,8 +28,9 @@
 #include "Pages.h"
 #include "Settings.h"
 #include "HelpWhatsThis.h"
-
+#ifdef GC_HAS_TRAINING
 #include "AddDeviceWizard.h"
+#endif
 #include "MainWindow.h"
 
 AthleteConfigDialog::AthleteConfigDialog(QDir _home, Context *context) :

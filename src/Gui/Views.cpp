@@ -20,12 +20,19 @@
 #include "RideCache.h"
 #include "AnalysisSidebar.h"
 #include "DiarySidebar.h"
+#include "AthleteTab.h"
+#ifdef GC_HAS_TRAINING
 #include "TrainSidebar.h"
+#endif
 #include "LTMSidebar.h"
 #include "BlankState.h"
+#ifdef GC_HAS_TRAINING
 #include "TrainDB.h"
+#endif
 #include "ComparePane.h"
+#ifdef GC_HAS_TRAINING
 #include "TrainBottom.h"
+#endif
 #include "Specification.h"
 
 AnalysisView::AnalysisView(Context *context, QStackedWidget *controls) :
@@ -320,6 +327,8 @@ TrendsView::justSelected()
     }
 }
 
+#ifdef GC_HAS_TRAINING
+
 TrainView::TrainView(Context *context, QStackedWidget *controls) :
         AbstractView(context, VIEW_TRAIN, "train", tr("Intensity Adjustments and Workout Control"))
 {
@@ -384,4 +393,5 @@ void
 TrainView::notifyViewPerspectiveAdded(Perspective* page) {
     page->styleChanged(2);
 }
+#endif
 

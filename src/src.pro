@@ -49,7 +49,12 @@ CONFIG += c++11
 ###=======================================================================
 ### Directory Structure - Split into subdirs to be more manageable
 ###=======================================================================
-INCLUDEPATH += ./ANT ./Train ./FileIO ./Cloud ./Charts ./Metrics ./Gui ./Core ./Planning
+equals(GcHasTraining, active) {
+INCLUDEPATH += ./ANT ./Train
+}
+INCLUDEPATH += ./FileIO ./Cloud ./Charts ./Metrics ./Gui ./Core ./Planning
+
+
 QMAKE_CFLAGS_ISYSTEM =
 
 
@@ -152,17 +157,20 @@ macx {
     # GC_VIDEO_QT6 will enable Qt6 video support,
     # GC_VIDEO_VLC will enable VLC video support,
     # otherwise we have a blank videowindow, it will do nothing
+    equals(GcHasTraining, active) {
     HEADERS += Train/VideoWindow.h
     SOURCES += Train/VideoWindow.cpp
+    }
 
 } else {
 
     # not on mac we need our own full screen support and segment control button
     HEADERS += Gui/QTFullScreen.h
     SOURCES += Gui/QTFullScreen.cpp
-
+    equals(GcHasTraining, active) {
     HEADERS += Train/VideoWindow.h
     SOURCES += Train/VideoWindow.cpp
+    }
 }
 
 # X11
@@ -371,6 +379,8 @@ contains(DEFINES, "GC_WANT_R") {
     INCLUDEPATH += $${LIBUSB_INCLUDE}
     LIBS        += $${LIBUSB_LIBS}
 
+    equals(GcHasTraining, active) {
+
     # lots of dependents
     SOURCES     += Train/LibUsb.cpp Train/Fortius.cpp Train/FortiusController.cpp \
                    Train/Imagic.cpp Train/ImagicController.cpp
@@ -386,6 +396,7 @@ contains(DEFINES, "GC_WANT_R") {
         DEFINES += LIBUSB_V_1
         SOURCES += Train/EzUsb-1.0.c
         HEADERS += Train/EzUsb-1.0.h
+    }
     }
 }
 
@@ -406,9 +417,10 @@ contains(DEFINES, "GC_WANT_R") {
     DEFINES     += GC_HAVE_USBXPRESS
     INCLUDEPATH += $${USBXPRESS_INCLUDE}
     LIBS        += $${USBXPRESS_LIBS}
-
+    equals(GcHasTraining, active) {
     SOURCES += Train/USBXpress.cpp
     HEADERS += Train/USBXpress.h
+    }
 }
 
 
@@ -536,6 +548,8 @@ HEADERS += Cloud/SportTracks.h
 SOURCES += Cloud/Nolio.cpp
 HEADERS += Cloud/Nolio.h
 
+equals(GcHasTraining, active) {
+
 SOURCES += Train/MonarkController.cpp Train/MonarkConnection.cpp
 HEADERS += Train/MonarkController.h Train/MonarkConnection.h
 SOURCES += Train/Kettler.cpp Train/KettlerController.cpp Train/KettlerConnection.cpp
@@ -556,6 +570,7 @@ HEADERS += Train/VMProConfigurator.h Train/VMProWidget.h
 SOURCES += Train/VMProConfigurator.cpp Train/VMProWidget.cpp
 SOURCES += Train/Ftms.cpp
 HEADERS += Train/Ftms.h
+}
 
 QT += charts opengl
 
@@ -577,23 +592,34 @@ SOURCES += Charts/UserChartWindow.cpp Charts/UserChartOverviewItem.cpp Charts/Us
 
 YACCSOURCES += Core/DataFilter.y \
                FileIO/JsonRideFile.y \
-               Core/RideDB.y \
-               Train/WorkoutFilter.y \
+               Core/RideDB.y
+
+equals(GcHasTraining, active) {
+YACCSOURCES += Train/WorkoutFilter.y \
                Train/TrainerDayAPIQuery.y
+}
+
 
 LEXSOURCES  += Core/DataFilter.l \
                FileIO/JsonRideFile.l \
-               Core/RideDB.l \
-               Train/WorkoutFilter.l \
+               Core/RideDB.l
+
+equals(GcHasTraining, active) {
+LEXSOURCES  += Train/WorkoutFilter.l \
                Train/TrainerDayAPIQuery.l
+}
 
 
 ###=========================================
 ### HEADER FILES [scanned by qmake, for moc]
 ###=========================================
 
+equals(GcHasTraining, active) {
+
 # ANT+
 HEADERS  += ANT/ANTChannel.h ANT/ANT.h ANT/ANTlocalController.h ANT/ANTLogger.h ANT/ANTMessage.h ANT/ANTMessages.h
+
+}
 
 # Charts and associated widgets
 HEADERS += Charts/Aerolab.h Charts/AerolabWindow.h Charts/AllPlot.h Charts/AllPlotInterval.h Charts/AllPlotSlopeCurve.h \
@@ -675,6 +701,7 @@ HEADERS += ../contrib/qtsolutions/codeeditor/codeeditor.h ../contrib/qtsolutions
            ../contrib/kmeans/kmeans.h ../contrib/kmeans/original_space_kmeans.h ../contrib/kmeans/triangle_inequality_base_kmeans.h \
            ../contrib/voronoi/Voronoi.h
 
+equals(GcHasTraining, active) {
 
 # Train View
 HEADERS += Train/AddDeviceWizard.h Train/CalibrationData.h Train/ComputrainerController.h Train/Computrainer.h Train/DeviceConfiguration.h \
@@ -696,14 +723,18 @@ HEADERS += Train/TrainBottom.h Train/TrainDB.h Train/TrainSidebar.h \
            Train/ErgOverview.h Train/Shy.h \
            Train/WorkoutTagWrapper.h \
            Train/MenuProvider.h Train/WorkoutMenuProvider.h
-
+}
 
 ###=============
 ### SOURCE FILES
 ###=============
 
+equals(GcHasTraining, active) {
+
 ## ANT+
 SOURCES += ANT/ANTChannel.cpp ANT/ANT.cpp ANT/ANTlocalController.cpp ANT/ANTLogger.cpp ANT/ANTMessage.cpp
+
+}
 
 ## Charts and related
 SOURCES += Charts/Aerolab.cpp Charts/AerolabWindow.cpp Charts/AllPlot.cpp Charts/AllPlotInterval.cpp Charts/AllPlotSlopeCurve.cpp \
@@ -791,6 +822,7 @@ SOURCES += ../contrib/qtsolutions/codeeditor/codeeditor.cpp ../contrib/qtsolutio
            ../contrib/kmeans/kmeans.cpp ../contrib/kmeans/original_space_kmeans.cpp ../contrib/kmeans/triangle_inequality_base_kmeans.cpp \
            ../contrib/voronoi/Voronoi.cpp
 
+equals(GcHasTraining, active) {
 
 ## Train View Components
 SOURCES += Train/AddDeviceWizard.cpp Train/CalibrationData.cpp Train/ComputrainerController.cpp Train/Computrainer.cpp Train/DeviceConfiguration.cpp \
@@ -812,6 +844,7 @@ SOURCES += Train/TrainBottom.cpp Train/TrainDB.cpp Train/TrainSidebar.cpp \
            Train/ErgOverview.cpp Train/Shy.cpp \
            Train/WorkoutTagWrapper.cpp \
            Train/WorkoutMenuProvider.cpp
+}
 
 ## Crash Handling
 win32-msvc* {

@@ -28,7 +28,9 @@
 #include "Colors.h"
 #include "ManualActivityWizard.h"
 #include "RepeatScheduleWizard.h"
+#ifdef GC_HAS_TRAINING
 #include "WorkoutFilter.h"
+#endif
 #include "IconManager.h"
 
 #define HLO "<h4>"
@@ -64,6 +66,7 @@ PlanningCalendarWindow::PlanningCalendarWindow(Context *context)
     connect(context, &Context::rideDeleted, this, &PlanningCalendarWindow::updateActivitiesIfInRange);
     connect(context, &Context::rideChanged, this, &PlanningCalendarWindow::updateActivitiesIfInRange);
     connect(context, &Context::configChanged, this, &PlanningCalendarWindow::configChanged);
+#ifdef GC_HAS_TRAINING
     connect(calendar, &Calendar::showInTrainMode, [=](CalendarEntry activity) {
         for (RideItem *rideItem : context->athlete->rideCache->rides()) {
             if (rideItem != nullptr && rideItem->fileName == activity.reference) {
@@ -77,6 +80,7 @@ PlanningCalendarWindow::PlanningCalendarWindow(Context *context)
             }
         }
     });
+#endif
     connect(calendar, &Calendar::viewActivity, [=](CalendarEntry activity) {
         for (RideItem *rideItem : context->athlete->rideCache->rides()) {
             if (rideItem != nullptr && rideItem->fileName == activity.reference) {
@@ -703,7 +707,11 @@ PlanningCalendarWindow::getActivities
         activity.durationSecs = rideItem->getForSymbol("workout_time", GlobalContext::context()->useMetricUnits);
         activity.type = rideItem->planned ? ENTRY_TYPE_PLANNED_ACTIVITY : ENTRY_TYPE_ACTIVITY;
         activity.isRelocatable = rideItem->planned;
+#ifdef GC_HAS_TRAINING
         activity.hasTrainMode = rideItem->planned && sport == "Bike" && ! buildWorkoutFilter(rideItem).isEmpty();
+#else
+        activity.hasTrainMode = false;
+#endif
         activities[rideItem->dateTime.date()] << activity;
     }
     for (auto dayIt = activities.begin(); dayIt != activities.end(); ++dayIt) {

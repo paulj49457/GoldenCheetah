@@ -103,14 +103,18 @@ class AthleteTab: public QWidget
         QStackedWidget *views;
         AnalysisView *analysisView;
         TrendsView *homeView;
+#ifdef GC_HAS_TRAINING
         TrainView *trainView;
+#endif
         DiaryView *diaryView;
 
         // Chart Settings Dialog
         ChartSettings *chartSettings;
         QStackedWidget *masterControls,
                        *analysisControls,
+#ifdef GC_HAS_TRAINING
                        *trainControls,
+#endif
                        *diaryControls,
                        *homeControls,
                        *intervalControls;

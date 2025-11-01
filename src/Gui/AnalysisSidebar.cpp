@@ -39,8 +39,10 @@
 // the ride cache
 #include "RideCache.h"
 
+#ifdef GC_HAS_TRAINING
 // Show in Train Mode
 #include "WorkoutFilter.h"
+#endif
 
 AnalysisSidebar::AnalysisSidebar(Context *context) : QWidget(context->mainWindow), context(context)
 {
@@ -412,6 +414,7 @@ AnalysisSidebar::showActivityMenu(const QPoint &pos)
         connect(actFindBest, SIGNAL(triggered(void)), this, SLOT(addIntervals(void)));
         menu.addAction(actFindBest);
 
+#ifdef GC_HAS_TRAINING
         if (rideItem->planned && rideItem->sport == "Bike") {
             QString filter = buildWorkoutFilter(rideItem);
             if (! filter.isEmpty()) {
@@ -424,6 +427,7 @@ AnalysisSidebar::showActivityMenu(const QPoint &pos)
                 menu.addAction(actStartWorkout);
             }
         }
+#endif
 
         menu.addSeparator();
 

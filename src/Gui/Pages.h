@@ -42,14 +42,20 @@
 #include <QGridLayout>
 #include <QProgressDialog>
 #include <QFontComboBox>
+#ifdef GC_HAS_TRAINING
 #include "DeviceTypes.h"
 #include "DeviceConfiguration.h"
+#endif
 #include "RideMetadata.h"
 #include "DataProcessor.h"
 #include "RideAutoImportConfig.h"
+#ifdef GC_HAS_TRAINING
 #include "RemoteControl.h"
+#endif
 #include "Measures.h"
+#ifdef GC_HAS_TRAINING
 #include "TagStore.h"
+#endif
 #include "ActionButtonBox.h"
 #include "StyledItemDelegates.h"
 #ifdef GC_WANT_PYTHON
@@ -138,6 +144,7 @@ class GeneralPage : public QWidget
         } b4;
 };
 
+#ifdef GC_HAS_TRAINING
 class deviceModel : public QAbstractTableModel
 {
     Q_OBJECT
@@ -292,8 +299,6 @@ private:
     QLabel          *m_StatsLabelArr[StatsLastPart];
 };
 
-
-
 class WorkoutTagManagerPage: public QWidget
 {
     Q_OBJECT
@@ -322,7 +327,7 @@ private:
     UniqueLabelEditDelegate labelEditDelegate;
     NoEditDelegate numDelegate;
 };
-
+#endif
 
 
 class CustomMetricsPage : public QWidget

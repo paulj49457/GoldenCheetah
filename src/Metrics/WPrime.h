@@ -20,7 +20,9 @@
 #define _gc_wprime_include
 
 #include "RideFile.h"
+#ifdef GC_HAS_TRAINING
 #include "ErgFile.h"
+#endif
 #include "Context.h"
 #include "Athlete.h"
 #include "Zones.h"
@@ -47,7 +49,9 @@ class WPrime {
 
         // recalc from ride selected or workout selected in train mode
         void setRide(RideFile *ride);
+#ifdef GC_HAS_TRAINING
         void setErg(ErgFile *erg);
+#endif
         void setWatts(Context *context, QVector<int>&watts, int CP, int WPRIME);
 
         RideFile *ride() { return rideFile; }

@@ -108,6 +108,7 @@ class MetricConfig : public QWidget
         CustomMetricsPage *customPage;
 };
 
+#ifdef GC_HAS_TRAINING
 // TRAIN PAGE
 class TrainConfig : public QWidget
 {
@@ -129,6 +130,7 @@ class TrainConfig : public QWidget
         SimBicyclePage *simBicyclePage;
         WorkoutTagManagerPage *workoutTagManagerPage;
 };
+#endif
 
 // INTERVAL PAGE
 class IntervalConfig : public QWidget
@@ -195,6 +197,8 @@ class ConfigDialog : public QMainWindow
         MetricConfig *metric;
         IntervalConfig *interval;
         MeasuresConfig *measures;
+#ifdef GC_HAS_TRAINING
         TrainConfig *train;
+#endif
 };
 #endif
