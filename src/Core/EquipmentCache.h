@@ -24,6 +24,7 @@
 #include <QMap>
 #include <QUuid>
 #include <QXmlDefaultHandler>
+#include <QXmlStreamReader>
 #include <QFileInfo>
 #include <QVector>
 
@@ -46,14 +47,15 @@ class EquipmentCache : public QObject
         AbstractEqItem* cloneEquipment(const QUuid& equipmentRef);
         bool deleteEquipment(const QUuid& equipmentRef);
 
-        void writeXML() const;
+        void writeXml() const;
 
         const QMap<QUuid, AbstractEqItem*>& getMap() { return allEqItems_; }
 
     private:
         EquipmentCache();
 
-        void readXML();
+        void readXmlv1();
+        bool readXml();
 
         const QFileInfo eqXMLDataFile_;
         QVector<QUuid> garbageItems_;

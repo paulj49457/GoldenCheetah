@@ -251,23 +251,11 @@ void
 EquipmentOverviewWindow::setTileConfig(const QJsonObject& obj, int type, const QString& name, const QString& datafilter,
                                        int order, int column, int span, int deep, ChartSpaceItem* add) const
 {
-    // determine the source of the equipment file content, this ensures content in the old
-    // equipment-perspective.xml file is automatically converted/transfered to the new equipment-data.xml file.
-    bool xmlContentSource = obj.contains("equipmentRef");
+    QUuid equipmentRef = QUuid::fromString(obj["equipmentRef"].toString());
 
-    QUuid equipmentRef;
-    if (xmlContentSource) {
-
-        equipmentRef = QUuid::fromString(obj["equipmentRef"].toString());
-
-        // when charts are imported the tiles equipmentRef will be all zeros,
-        // so we to create a unique id for the tiles.
-        if (equipmentRef.isNull()) equipmentRef = QUuid::createUuid();
-
-    } else { // Legacy JSON parsing to be removed at some point.
-
-        equipmentRef = QUuid::createUuid();
-    }
+    // when charts are imported the tiles equipmentRef will be all zeros,
+    // so we need to create a unique id for the tiles.
+    if (equipmentRef.isNull()) equipmentRef = QUuid::createUuid();
 
     // now the actual card settings
     switch (type) {
@@ -275,7 +263,6 @@ EquipmentOverviewWindow::setTileConfig(const QJsonObject& obj, int type, const Q
     case OverviewItemType::EQ_ITEM:
     {
         EquipmentItem* eqItem = new EquipmentItem(space, name, equipmentRef);
-        if (!xmlContentSource) eqItem->getAbsEqItem()->parseLegacyJSON(obj); // Legacy JSON parsing to be removed at some point.
         add = eqItem;
         add->datafilter = datafilter;
         space->addItem(order, column, span, deep, add);
@@ -285,7 +272,6 @@ EquipmentOverviewWindow::setTileConfig(const QJsonObject& obj, int type, const Q
     case OverviewItemType::EQ_SUMMARY:
     {
         EquipmentSummary* eqSummary = new EquipmentSummary(space, name, equipmentRef);
-        if (!xmlContentSource) eqSummary->getAbsEqItem()->parseLegacyJSON(obj); // Legacy JSON parsing to be removed at some point.
         add = eqSummary;
         add->datafilter = datafilter;
         space->addItem(order, column, span, deep, add);
@@ -295,7 +281,6 @@ EquipmentOverviewWindow::setTileConfig(const QJsonObject& obj, int type, const Q
     case OverviewItemType::EQ_HISTORY:
     {
         EquipmentHistory* eqHistory = new EquipmentHistory(space, name, equipmentRef);
-        if (!xmlContentSource) eqHistory->getAbsEqItem()->parseLegacyJSON(obj); // Legacy JSON parsing to be removed at some point.
         add = eqHistory;
         add->datafilter = datafilter;
         space->addItem(order, column, span, deep, add);
@@ -305,7 +290,6 @@ EquipmentOverviewWindow::setTileConfig(const QJsonObject& obj, int type, const Q
     case OverviewItemType::EQ_NOTES:
     {
         EquipmentNotes* eqNotes = new EquipmentNotes(space, name, equipmentRef);
-        if (!xmlContentSource) eqNotes->getAbsEqItem()->parseLegacyJSON(obj); // Legacy JSON parsing to be removed at some point.
         add = eqNotes;
         add->datafilter = datafilter;
         space->addItem(order, column, span, deep, add);

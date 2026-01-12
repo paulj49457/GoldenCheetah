@@ -95,17 +95,14 @@ AbstractEqItem::AbstractEqItem(const QUuid& equipmentRef, const QString& xmlChar
 void
 AbstractEqItem::writeXml(uint32_t version, QTextStream& xmlOut) const
 {
-    if (version == 1) {
+    if (version == 1) xmlOut << "\t\t\t<eqreference>" << Utils::xmlprotect(getEquipmentRef().toString(QUuid::WithoutBraces)) << "</eqreference>\n";
+    if (version == 2) xmlOut << "eqref=\"" << Utils::xmlprotect(getEquipmentRef().toString(QUuid::WithoutBraces)) << "\">\n";
 
-        xmlOut << "\t\t\t<eqreference>" << Utils::xmlprotect(getEquipmentRef().toString(QUuid::WithoutBraces)) << "</eqreference>\n";
+    // the chart & tile names are stored and loaded from the equipment-perspectives.xml file,
+    // they are only exported in the equipment-data.xml for tile identification purposes.
+    xmlOut << "\t\t\t<eqchart>" << Utils::xmlprotect(xmlChartName_) << "</eqchart>\n";
+    xmlOut << "\t\t\t<eqtile>" << Utils::xmlprotect(xmlTileName_) << "</eqtile>\n";
 
-        // the chart & tile names are stored and loaded from the equipment-perspectives.xml file,
-        // they are only exported in the equipment-data.xml for tile identification purposes.
-        xmlOut << "\t\t\t<eqchart>" << Utils::xmlprotect(xmlChartName_) << "</eqchart>\n";
-        xmlOut << "\t\t\t<eqtile>" << Utils::xmlprotect(xmlTileName_) << "</eqtile>\n";
-    } else {
-        qDebug() << "AbstractEqItem::writeXml - invalid file version:" << version;
-    }
 }
 
 //
@@ -287,59 +284,104 @@ EqItem::xmlUoM(bool loadingAsMetric)
 }
 
 void
-EqItem::parseXML(uint32_t version, const QString& qName, const QString& buffer)
+EqItem::parseXmlv1(const QString& qName, const QString& buffer)
 {
-    if (version == 1) {
+    static EqTimeWindow windowToLoad;
 
-        static EqTimeWindow windowToLoad;
+    // the chart & tile names are stored and loaded from the equipment-perspectives.xml file,
+    // they are not imported from the equipment-data.xml.
 
-        // the chart & tile names are stored and loaded from the equipment-perspectives.xml file,
-        // they are not imported from the equipment-data.xml.
+    if (qName == "displaytotal") displayTotalDistance_ = (buffer != "elevation");
+    else if (qName == "nongcdistance") setNonGCDistance(buffer.toDouble() * xmlScalerKmMile_);
+    else if (qName == "nongcelevation") setNonGCElevation(buffer.toDouble() * xmlScalerMtrFoot_);
+    else if (qName == "repdistance") repDistance_ = buffer.toDouble() * xmlScalerKmMile_;
+    else if (qName == "repelevation") repElevation_ = buffer.toDouble() * xmlScalerMtrFoot_;
+    else if (qName == "repdate") {
+        repDateSet_ = (buffer != "");
+        repDate_ = repDateSet_ ? QDate::fromString(buffer) : QDate();
+    }
+    else if (qName == "eqlink") windowToLoad = EqTimeWindow(buffer);
+    else if (qName == "startdate") {
+        windowToLoad.startSet_ = (buffer != "");
+        windowToLoad.startDate_ = windowToLoad.startSet_ ? QDate::fromString(buffer) : QDate();
+    }
+    else if (qName == "enddate") {
+        windowToLoad.endSet_ = (buffer != "");
+        windowToLoad.endDate_ = windowToLoad.endSet_ ? QDate::fromString(buffer) : QDate();
+    }
+    else if (qName == "equipmentuse") {
+        eqLinkUseList_.push_back(windowToLoad);
+        windowToLoad.reset();
+    }
+    else if (qName == "notes") notes_ = buffer;
+}
 
-        if (qName == "displaytotal") displayTotalDistance_ = (buffer != "elevation");
-        else if (qName == "nongcdistance") setNonGCDistance(buffer.toDouble() * xmlScalerKmMile_);
-        else if (qName == "nongcelevation") setNonGCElevation(buffer.toDouble() * xmlScalerMtrFoot_);
-        else if (qName == "repdistance") repDistance_ = buffer.toDouble() * xmlScalerKmMile_;
-        else if (qName == "repelevation") repElevation_ = buffer.toDouble() * xmlScalerMtrFoot_;
-        else if (qName == "repdate") {
-            repDateSet_ = (buffer != "");
-            repDate_ = repDateSet_ ? QDate::fromString(buffer) : QDate();
+void
+EqItem::parseXml(uint32_t version, QXmlStreamReader& reader)
+{
+    if (version == 2) {
+
+        EqTimeWindow windowToLoad;
+        bool done = false;
+
+        while (!reader.atEnd() && !reader.hasError() && !done) {
+            QXmlStreamReader::TokenType token = reader.readNext();
+
+            if (token == QXmlStreamReader::StartElement) {
+
+                // the chart & tile names are stored and loaded from the equipment-perspectives.xml file,
+                // they are not imported from the equipment-data.xml.
+
+                if (reader.name() == "displaytotal") displayTotalDistance_ = (reader.readElementText() != "elevation");
+                else if (reader.name() == "nongcdistance") setNonGCDistance(reader.readElementText().toDouble() * xmlScalerKmMile_);
+                else if (reader.name() == "nongcelevation") setNonGCElevation(reader.readElementText().toDouble() * xmlScalerMtrFoot_);
+                else if (reader.name() == "repdistance") repDistance_ = reader.readElementText().toDouble() * xmlScalerKmMile_;
+                else if (reader.name() == "repelevation") repElevation_ = reader.readElementText().toDouble() * xmlScalerMtrFoot_;
+                else if (reader.name() == "repdate") {
+                    QString date(reader.readElementText());
+                    repDateSet_ = (date != "");
+                    repDate_ = repDateSet_ ? QDate::fromString(date) : QDate();
+                }
+                else if (reader.name() == "equipmentuse") windowToLoad = EqTimeWindow(reader.attributes().value("eqlink").toString());
+                else if (reader.name() == "startdate") {
+                    QString date(reader.readElementText());
+                    windowToLoad.startSet_ = (date != "");
+                    windowToLoad.startDate_ = windowToLoad.startSet_ ? QDate::fromString(date) : QDate();
+                }
+                else if (reader.name() == "enddate") {
+                    QString date(reader.readElementText());
+                    windowToLoad.endSet_ = (date != "");
+                    windowToLoad.endDate_ = windowToLoad.endSet_ ? QDate::fromString(date) : QDate();
+                }
+                else if (reader.name() == "notes") notes_ = reader.readElementText();
+
+            } else if (token == QXmlStreamReader::EndElement) {
+
+                if (reader.name() == "equipmentuse") eqLinkUseList_.push_back(windowToLoad);
+                else if (reader.name() == "equipmentitem") done = true;
+            }
         }
-        else if (qName == "eqlink") windowToLoad = EqTimeWindow(buffer);
-        else if (qName == "startdate") {
-            windowToLoad.startSet_ = (buffer != "");
-            windowToLoad.startDate_ = windowToLoad.startSet_ ? QDate::fromString(buffer) : QDate();
-        }
-        else if (qName == "enddate") {
-            windowToLoad.endSet_ = (buffer != "");
-            windowToLoad.endDate_ = windowToLoad.endSet_ ? QDate::fromString(buffer) : QDate();
-        }
-        else if (qName == "equipmentuse") {
-            eqLinkUseList_.push_back(windowToLoad);
-            windowToLoad.reset();
-        }
-        else if (qName == "notes") notes_ = buffer;
     } else {
-        qDebug() << "EqItem::parseXML - invalid file version:" << version;
+        qDebug() << "EqItem::parseXml - invalid file version:" << version;
     }
 }
 
 void
 EqItem::writeXml(uint32_t version, QTextStream& xmlOut) const
 {
+    if (version == 1) xmlOut << "\t\t<equipmentitem>\n";
+    if (version == 2) xmlOut << "\t\t<equipmentitem ";
+
+    AbstractEqItem::writeXml(version, xmlOut);
+
+    xmlOut << "\t\t\t<displaytotal>" << (displayTotalDistance_ ? "distance" : "elevation") << "</displaytotal>\n";
+    xmlOut << "\t\t\t<nongcdistance>" << nonGCDistance_ << "</nongcdistance>\n";
+    xmlOut << "\t\t\t<nongcelevation>" << nonGCElevation_ << "</nongcelevation>\n";
+    xmlOut << "\t\t\t<repdistance>" << repDistance_ << "</repdistance>\n";
+    xmlOut << "\t\t\t<repelevation>" << repElevation_ << "</repelevation>\n";
+    xmlOut << "\t\t\t<repdate>" << (repDateSet_ ? Utils::xmlprotect(repDate_.toString()) : "") << "</repdate>\n";
+
     if (version == 1) {
-
-        xmlOut << "\t\t<equipmentitem>\n";
-
-        AbstractEqItem::writeXml(version, xmlOut);
-
-        xmlOut << "\t\t\t<displaytotal>" << (displayTotalDistance_ ? "distance" : "elevation") << "</displaytotal>\n";
-        xmlOut << "\t\t\t<nongcdistance>" << nonGCDistance_ << "</nongcdistance>\n";
-        xmlOut << "\t\t\t<nongcelevation>" << nonGCElevation_ << "</nongcelevation>\n";
-        xmlOut << "\t\t\t<repdistance>" << repDistance_ << "</repdistance>\n";
-        xmlOut << "\t\t\t<repelevation>" << repElevation_ << "</repelevation>\n";
-        xmlOut << "\t\t\t<repdate>" << (repDateSet_ ? Utils::xmlprotect(repDate_.toString()) : "") << "</repdate>\n";
-
         for (const auto& eqUse : eqLinkUseList_) {
             xmlOut << "\t\t\t<equipmentuse>\n";
             xmlOut << "\t\t\t\t<eqlink>" << Utils::xmlprotect(eqUse.eqLinkName()) << "</eqlink>\n";
@@ -347,67 +389,18 @@ EqItem::writeXml(uint32_t version, QTextStream& xmlOut) const
             xmlOut << "\t\t\t\t<enddate>" << (eqUse.endSet_ ? Utils::xmlprotect(eqUse.endDate_.toString()) : "") << "</enddate>\n";
             xmlOut << "\t\t\t</equipmentuse>\n";
         }
-        xmlOut << "\t\t\t<notes>" << Utils::xmlprotect(notes_) << "</notes>\n";
-
-        xmlOut << "\t\t</equipmentitem>\n";
-    } else {
-        qDebug() << "EqItem::writeXml - invalid file version:" << version;
-    }
-}
-
-void
-EqItem::parseLegacyJSON(const QJsonObject& obj)
-{
-    // Legacy code for conversion, will be removed in future release.
-
-    bool loadingAsMetric = (obj["metric"].toString() == "1") ? true : false;
-
-    // originally the following were scaled in the JSON format, they don't need to be now.
-    nonGCDistance_ = obj["nonGCDistanceScaled"].toString().toDouble()*EQ_SCALED_TO_REAL;
-    nonGCElevation_ = obj["nonGCElevationScaled"].toString().toDouble()*EQ_SCALED_TO_REAL;
-    repDistance_ = obj["repDistance"].toString().toDouble()*EQ_SCALED_TO_REAL;
-    repElevation_ = obj["repElevation"].toString().toDouble()*EQ_SCALED_TO_REAL;
-
-    // Due to lazy loading of perspectives, saved distances might need converting 
-    // as the units might have changed before the equipment perspective is loaded.
-    if (loadingAsMetric && !GlobalContext::context()->useMetricUnits) {
-
-        nonGCDistance_ *= KM_PER_MILE;
-        nonGCElevation_ *= METERS_PER_FOOT;
-        repDistance_ *= KM_PER_MILE;
-        repElevation_ *= METERS_PER_FOOT;
-
-    }
-    if (!loadingAsMetric && GlobalContext::context()->useMetricUnits) {
-
-        nonGCDistance_ *= MILES_PER_KM;
-        nonGCElevation_ *= FEET_PER_METER;
-        repDistance_ *= MILES_PER_KM;
-        repElevation_ *= FEET_PER_METER;
+    } else if (version == 2) {
+        for (const auto& eqUse : eqLinkUseList_) {
+            xmlOut << "\t\t\t<equipmentuse eqlink=\"" << Utils::xmlprotect(eqUse.eqLinkName()) << "\">\n";
+            xmlOut << "\t\t\t\t<startdate>" << (eqUse.startSet_ ? Utils::xmlprotect(eqUse.startDate_.toString()) : "") << "</startdate>\n";
+            xmlOut << "\t\t\t\t<enddate>" << (eqUse.endSet_ ? Utils::xmlprotect(eqUse.endDate_.toString()) : "") << "</enddate>\n";
+            xmlOut << "\t\t\t</equipmentuse>\n";
+        }
     }
 
-    repDateSet_ = (obj["repDateSet"].toString() == "1") ? true : false;
-    if (repDateSet_) repDate_ = QDate::fromString(obj["repDate"].toString());
+    xmlOut << "\t\t\t<notes>" << Utils::xmlprotect(notes_) << "</notes>\n";
 
-    QJsonArray jsonArray = obj["eqUseList"].toArray();
-
-    foreach(const QJsonValue & value, jsonArray) {
-
-        QJsonObject objVals = value.toObject();
-
-        QString eqLinkName = objVals["eqLink"].toString();
-        bool startSet = (objVals["startSet"].toString() == "1") ? true : false;
-        QDate startDate;
-        if (startSet) startDate = QDate::fromString(objVals["startDate"].toString());
-        bool endSet = (objVals["endSet"].toString() == "1") ? true : false;
-        QDate endDate;
-        if (endSet) endDate = QDate::fromString(objVals["endDate"].toString());
-
-        eqLinkUseList_.push_back(EqTimeWindow(eqLinkName, startSet, startDate, endSet, endDate));
-    }
-    sortEqLinkUseWindows();
-
-    notes_ = Utils::jsonunprotect(obj["notes"].toString());
+    xmlOut << "\t\t</equipmentitem>\n";
 }
 
 //
@@ -506,45 +499,54 @@ EqSummary::endOfCalculation()
 }
 
 void
-EqSummary::parseXML(uint32_t version, const QString& qName, const QString& buffer)
+EqSummary::parseXmlv1(const QString& qName, const QString& buffer)
 {
-    if (version == 1) {
+    // the chart & tile names are stored and loaded from the equipment-perspectives.xml file,
+    // they are not imported from the equipment-data.xml.
 
-        // the chart & tile names are stored and loaded from the equipment-perspectives.xml file,
-        // they are not imported from the equipment-data.xml.
+    if (qName == "eqlink") setEqLinkName(buffer);
+    else if (qName == "showathleteactivities") showActivitiesPerAthlete_ = (buffer == "true");
+}
 
-        if (qName == "eqlink") setEqLinkName(buffer);
-        else if (qName == "showathleteactivities") showActivitiesPerAthlete_ = (buffer == "true");
+void
+EqSummary::parseXml(uint32_t version, QXmlStreamReader& reader)
+{
+    if (version == 2) {
+
+        bool done = false;
+        while (!reader.atEnd() && !reader.hasError() && !done) {
+            QXmlStreamReader::TokenType token = reader.readNext();
+
+            if (token == QXmlStreamReader::StartElement) {
+
+                // the chart & tile names are stored and loaded from the equipment-perspectives.xml file,
+                // they are not imported from the equipment-data.xml.
+
+                if (reader.name() == "eqlink") setEqLinkName(reader.readElementText());
+                else if (reader.name() == "showathleteactivities") showActivitiesPerAthlete_ = (reader.readElementText() == "true");
+
+            } else if (token == QXmlStreamReader::EndElement) {
+
+                if (reader.name() == "equipmentsummary") done = true;
+            }
+        }
     } else {
-        qDebug() << "EqSummary::parseXML - invalid file version:" << version;
+        qDebug() << "EqSummary::parseXml - invalid file version:" << version;
     }
 }
 
 void
 EqSummary::writeXml(uint32_t version, QTextStream& xmlOut) const
 {
-    if (version == 1) {
+    if (version == 1) xmlOut << "\t\t<equipmentsummary>\n";
+    if (version == 2) xmlOut << "\t\t<equipmentsummary ";
 
-        xmlOut << "\t\t<equipmentsummary>\n";
+    AbstractEqItem::writeXml(version, xmlOut);
 
-        AbstractEqItem::writeXml(version, xmlOut);
+    xmlOut << "\t\t\t<eqlink>" << Utils::xmlprotect(getEqLinkName()) << "</eqlink>\n";
+    xmlOut << "\t\t\t<showathleteactivities>" << (showActivitiesPerAthlete_ ? "true" : "false") << "</showathleteactivities>\n";
 
-        xmlOut << "\t\t\t<eqlink>" << Utils::xmlprotect(getEqLinkName()) << "</eqlink>\n";
-        xmlOut << "\t\t\t<showathleteactivities>" << (showActivitiesPerAthlete_ ? "true" : "false") << "</showathleteactivities>\n";
-
-        xmlOut << "\t\t</equipmentsummary>\n";
-    } else {
-        qDebug() << "EqSummary::writeXml - invalid file version:" << version;
-    }
-}
-
-void
-EqSummary::parseLegacyJSON(const QJsonObject& obj)
-{
-    // Legacy code for conversion, will be removed in future release.
-
-    setEqLinkName(obj["eqLink"].toString());
-    showActivitiesPerAthlete_ = (obj["showAthleteActivities"].toString() == "1") ? true : false;
+    xmlOut << "\t\t</equipmentsummary>\n";
 }
 
 //
@@ -598,65 +600,72 @@ EqHistory::sortHistoryEntries()
 }
 
 void
-EqHistory::parseXML(uint32_t version, const QString& qName, const QString& buffer)
+EqHistory::parseXmlv1(const QString& qName, const QString& buffer)
 {
-    if (version == 1) {
+    static EqHistoryEntry eqHistoryEntry;
 
-        static EqHistoryEntry eqHistoryEntry;
+    // the chart & tile names are stored and loaded from the equipment-perspectives.xml file,
+    // they are not imported from the equipment-data.xml.
 
-        // the chart & tile names are stored and loaded from the equipment-perspectives.xml file,
-        // they are not imported from the equipment-data.xml.
+    if (qName == "sortmostrecentfirst") sortMostRecentFirst_ = (buffer == "true");
+    else if (qName == "historydate") eqHistoryEntry.date_ = QDate::fromString(buffer);
+    else if (qName == "historytext") eqHistoryEntry.text_ = buffer;
+    else if (qName == "historyentry") {
+        eqHistoryList_.push_back(eqHistoryEntry);
+        eqHistoryEntry.reset();
+    }
+}
 
-        if (qName == "sortmostrecentfirst") sortMostRecentFirst_ = (buffer == "true");
-        else if (qName == "historydate") eqHistoryEntry.date_ = QDate::fromString(buffer);
-        else if (qName == "historytext") eqHistoryEntry.text_ = buffer;
-        else if (qName == "historyentry") {
-            eqHistoryList_.push_back(eqHistoryEntry);
-            eqHistoryEntry.reset();
+void
+EqHistory::parseXml(uint32_t version, QXmlStreamReader& reader)
+{
+    if (version == 2) {
+
+        bool done = false;
+        EqHistoryEntry eqHistoryEntry;
+
+        while (!reader.atEnd() && !reader.hasError() && !done) {
+            QXmlStreamReader::TokenType token = reader.readNext();
+
+            if (token == QXmlStreamReader::StartElement) {
+
+                // the chart & tile names are stored and loaded from the equipment-perspectives.xml file,
+                // they are not imported from the equipment-data.xml.
+
+                if (reader.name() == "sortmostrecentfirst") sortMostRecentFirst_ = (reader.readElementText() == "true");
+
+                else if (reader.name() == "historyentry") eqHistoryEntry.reset();
+                else if (reader.name() == "historydate") eqHistoryEntry.date_ = QDate::fromString(reader.readElementText());
+                else if (reader.name() == "historytext") eqHistoryEntry.text_ = Utils::unprotect(reader.readElementText());
+
+            } else if (token == QXmlStreamReader::EndElement) {
+
+                if (reader.name() == "historyentry") eqHistoryList_.push_back(eqHistoryEntry);
+                else if (reader.name() == "equipmenthistory") done = true;
+            }
         }
     } else {
-        qDebug() << "EqHistory::parseXML - invalid file version:" << version;
+        qDebug() << "EqHistory::parseXml - invalid file version:" << version;
     }
 }
 
 void
 EqHistory::writeXml(uint32_t version, QTextStream& xmlOut) const
 {
-    if (version == 1) {
+    if (version == 1) xmlOut << "\t\t<equipmenthistory>\n";
+    if (version == 2 ) xmlOut << "\t\t<equipmenthistory ";
 
-        xmlOut << "\t\t<equipmenthistory>\n";
+    AbstractEqItem::writeXml(version, xmlOut);
 
-        AbstractEqItem::writeXml(version, xmlOut);
+    xmlOut << "\t\t\t<sortmostrecentfirst>" << (sortMostRecentFirst_ ? "true" : "false") << "</sortmostrecentfirst>\n";
 
-        xmlOut << "\t\t\t<sortmostrecentfirst>" << (sortMostRecentFirst_ ? "true" : "false") << "</sortmostrecentfirst>\n";
-
-        for (const auto& eqHistory : eqHistoryList_) {
-            xmlOut << "\t\t\t<historyentry>\n";
-            xmlOut << "\t\t\t\t<historydate>" << Utils::xmlprotect(eqHistory.date_.toString()) << "</historydate>\n";
-            xmlOut << "\t\t\t\t<historytext>" << Utils::xmlprotect(eqHistory.text_) << "</historytext>\n";
-            xmlOut << "\t\t\t</historyentry>\n";
-        }
-        xmlOut << "\t\t</equipmenthistory>\n";
-    } else {
-        qDebug() << "EqHistory::writeXml - invalid file version:" << version;
+    for (const auto& eqHistory : eqHistoryList_) {
+        xmlOut << "\t\t\t<historyentry>\n";
+        xmlOut << "\t\t\t\t<historydate>" << Utils::xmlprotect(eqHistory.date_.toString()) << "</historydate>\n";
+        xmlOut << "\t\t\t\t<historytext>" << Utils::xmlprotect(eqHistory.text_) << "</historytext>\n";
+        xmlOut << "\t\t\t</historyentry>\n";
     }
-}
-
-void
-EqHistory::parseLegacyJSON(const QJsonObject& obj)
-{
-    // Legacy code for conversion, will be removed in future release.
-
-    sortMostRecentFirst_ = (obj["sortMostRecentFirst"].toString() == "1") ? true : false;
-
-    QJsonArray jsonArray = obj["historyList"].toArray();
-
-    foreach(const QJsonValue & value, jsonArray) {
-        QJsonObject objVals = value.toObject();
-        QDate historyDate = QDate::fromString(objVals["historyDate"].toString());
-        QString historyText = objVals["historyText"].toString();
-        eqHistoryList_.push_back(EqHistoryEntry(historyDate, historyText));
-    }
+    xmlOut << "\t\t</equipmenthistory>\n";
 }
 
 //
@@ -675,45 +684,48 @@ EqNotes::EqNotes(const EqNotes& toCopy)
 }
 
 void
-EqNotes::parseXML(uint32_t version, const QString& qName, const QString& buffer)
+EqNotes::parseXmlv1(const QString& qName, const QString& buffer)
 {
-    if (version == 1) {
+    // the chart & tile names are stored and loaded from the equipment-perspectives.xml file,
+    // they are not imported from the equipment-data.xml.
 
-        // the chart & tile names are stored and loaded from the equipment-perspectives.xml file,
-        // they are not imported from the equipment-data.xml.
+    if (qName == "notes") notes_ = buffer;
+}
 
-        if (qName == "notes") notes_ = buffer;
+void
+EqNotes::parseXml(uint32_t version, QXmlStreamReader& reader)
+{
+    if (version == 2) {
 
+        bool done = false;
+        while (!reader.atEnd() && !reader.hasError() && !done) {
+            QXmlStreamReader::TokenType token = reader.readNext();
+
+            if (token == QXmlStreamReader::StartElement) {
+
+                // the chart & tile names are stored and loaded from the equipment-perspectives.xml file,
+                // they are not imported from the equipment-data.xml.
+
+                if (reader.name() == "notes") notes_ = Utils::unprotect(reader.readElementText());
+
+            } else if (token == QXmlStreamReader::EndElement) {
+
+                if (reader.name() == "equipmentnotes") done = true;
+            }
+        }
     } else {
-        qDebug() << "EqNotes::parseXML - invalid file version:" << version;
+        qDebug() << "EqNotes::parseXml - invalid file version:" << version;
     }
 }
 
 void
 EqNotes::writeXml(uint32_t version, QTextStream& xmlOut) const
 {
-    if (version == 1) {
+    if (version == 1) xmlOut << "\t\t<equipmentnotes>\n";
+    if (version == 2 ) xmlOut << "\t\t<equipmentnotes ";
 
-        xmlOut << "\t\t<equipmentnotes>\n";
+    AbstractEqItem::writeXml(version, xmlOut);
 
-        AbstractEqItem::writeXml(version, xmlOut);
-
-        xmlOut << "\t\t\t<notes>" << Utils::xmlprotect(notes_) << "</notes>\n";
-        xmlOut << "\t\t</equipmentnotes>\n";
-    } else {
-        qDebug() << "EqNotes::writeXml - invalid file version:" << version;
-    }
+    xmlOut << "\t\t\t<notes>" << Utils::xmlprotect(notes_) << "</notes>\n";
+    xmlOut << "\t\t</equipmentnotes>\n";
 }
-
-void
-EqNotes::parseLegacyJSON(const QJsonObject& obj)
-{
-    // Legacy code for conversion, will be removed in future release.
-
-    notes_ = Utils::jsonunprotect(obj["notes"].toString());
-}
-
-
-
-
-

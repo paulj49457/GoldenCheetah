@@ -24,6 +24,7 @@
 #include <QMutex>
 #include <QMap>
 #include <QTextStream>
+#include <QXmlStreamReader>
 #include <QJsonObject>
 #include <memory> // Atomics
 
@@ -71,9 +72,9 @@ class AbstractEqItem : public QObject
                                 double /* rideDistance */, double /* rideElevation */, uint64_t /* rideTimeInSecs */, const QString& /* athleteName */ ) {}
 
         virtual void xmlUoM(bool /* loadingAsMetric */) {}
-        virtual void parseXML(uint32_t version, const QString& qName, const QString& buffer) = 0;
+        virtual void parseXmlv1(const QString& qName, const QString& buffer) = 0;
+        virtual void parseXml(uint32_t version, QXmlStreamReader& reader) = 0;
         virtual void writeXml(uint32_t version, QTextStream& xmlOut) const;
-        virtual void parseLegacyJSON(const QJsonObject& obj) = 0;
 
         QString xmlChartName_;
         QString xmlTileName_;
@@ -127,9 +128,9 @@ class EqItem : public AbstractEqItem
         uint64_t getActivityTimeInSecs() const { return activityTimeInSecs_; }
 
         void xmlUoM(bool loadingAsMetric) override;
-        void parseXML(uint32_t version, const QString& qName, const QString& buffer);
+        void parseXmlv1(const QString& qName, const QString& buffer) override;
+        void parseXml(uint32_t version, QXmlStreamReader& reader) override;
         void writeXml(uint32_t version, QTextStream& xmlOut) const override;
-        void parseLegacyJSON(const QJsonObject& obj) override;
 
         // primary state
         bool displayTotalDistance_;
@@ -202,9 +203,9 @@ class EqSummary : public AbstractEqItem
         const QDate& getEqLinkLatestDate() const { return eqLinkLatestDate_; }
         const QMap<QString, uint32_t>& getAthleteActivityMap() const { return athleteActivityMap_; }
 
-        void parseXML(uint32_t version, const QString& qName, const QString& buffer);
+        void parseXmlv1(const QString& qName, const QString& buffer) override;
+        void parseXml(uint32_t version, QXmlStreamReader& reader) override;
         void writeXml(uint32_t version, QTextStream& xmlOut) const override;
-        void parseLegacyJSON(const QJsonObject& obj) override;
 
         // primary state
         bool showActivitiesPerAthlete_;
@@ -267,9 +268,9 @@ class EqHistory : public AbstractEqItem
 
         virtual ~EqHistory() {}
 
-        void parseXML(uint32_t version, const QString& qName, const QString& buffer);
+        void parseXmlv1(const QString& qName, const QString& buffer) override;
+        void parseXml(uint32_t version, QXmlStreamReader& reader) override;
         void writeXml(uint32_t version, QTextStream& xmlOut) const override;
-        void parseLegacyJSON(const QJsonObject& obj) override;
 
         bool sortMostRecentFirst_;
         QVector<EqHistoryEntry> eqHistoryList_;
@@ -288,9 +289,9 @@ class EqNotes : public AbstractEqItem
         // clone EqNotes, with new Uuid
         EqNotes(const EqNotes& toCopy);
 
-        void parseXML(uint32_t version, const QString& qName, const QString& buffer);
+        void parseXmlv1(const QString& qName, const QString& buffer) override;
+        void parseXml(uint32_t version, QXmlStreamReader& reader) override;
         void writeXml(uint32_t version, QTextStream& xmlOut) const override;
-        void parseLegacyJSON(const QJsonObject& obj) override;
 
         virtual ~EqNotes() {}
 

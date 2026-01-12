@@ -1176,7 +1176,7 @@ MainWindow::~MainWindow()
     // this is last place to write the equipment cache xml data before the closure
     // of the QT windows causes tiles within the charts to be deleted, resulting in
     // their associated equipment cache items also being deleted.
-    EquipmentCache::getInstance().writeXML();
+    EquipmentCache::getInstance().writeXml();
 }
 
 // global search/data filter

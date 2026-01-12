@@ -32,9 +32,13 @@ EquipmentCache::EquipmentCache() :
 
     if (eqXMLDataFile_.exists() && eqXMLDataFile_.isFile()) {
 
-        readXML();
+        if (readXml() == false) {
 
-        // create list of QUuids read from the file, used to garbage collect orphaned items in writeXML().
+            // try reading legacy v1 format of the equipment-data.xml file (uses legacy QXmlDefaultHandler)
+            readXmlv1(); 
+        }
+
+        // create list of QUuids read from the file, used to garbage collect orphaned items in writeXml().
         for (auto itr = allEqItems_.keyValueBegin(); itr != allEqItems_.keyValueEnd(); ++itr) {
             garbageItems_.push_back(itr->first);
         }
@@ -124,9 +128,12 @@ EquipmentCache::deleteEquipment(const QUuid& equipmentRef)
 }
 
 void
-EquipmentCache::writeXML() const
+EquipmentCache::writeXml() const
 {
-    qDebug() << "EquipmentCache - Writing xml file: " << eqXMLDataFile_.absoluteFilePath().toStdString().c_str();
+    // the xml file version to be written.
+    uint32_t version = 2;
+
+    qDebug("EquipmentCache - Writing v%d xml file: %s", version, eqXMLDataFile_.absoluteFilePath().toStdString().c_str());
 
     // open file - truncate contents
     QFile file(eqXMLDataFile_.absoluteFilePath());
@@ -152,7 +159,6 @@ EquipmentCache::writeXML() const
     xmlOut << "<!-- This file holds the equipment data information which cannot be derived from calculation -->\n";
     xmlOut << "<equipmentdata>\n";
 
-    uint32_t version = 1;
     xmlOut << "\t<version>" << version << "</version>\n";
     xmlOut << "\t<uom>" << Utils::xmlprotect(GlobalContext::context()->useMetricUnits ? "metric" : "imperial") << "</uom>\n";
 
@@ -166,7 +172,7 @@ EquipmentCache::writeXML() const
     // xml file will be discarded on the next import.
     for (auto itr = allEqItems_.keyValueBegin(); itr != allEqItems_.keyValueEnd(); ++itr) {
         if (garbageItems_.contains(itr->first)) {
-            qWarning() << "EquipmentCache::writeXML - Discarding unused item:" << itr->first.toString();
+            qWarning() << "EquipmentCache::writeXml - Discarding unused item:" << itr->first.toString();
         } else {
             itr->second->writeXml(version, xmlOut);
         }
@@ -179,10 +185,61 @@ EquipmentCache::writeXML() const
     file.close();
 }
 
-void
-EquipmentCache::readXML()
+bool
+EquipmentCache::readXml()
 {
-    qDebug() << "EquipmentCache reading xml file: " << eqXMLDataFile_.absoluteFilePath().toStdString().c_str();
+    QFile metadataFile(eqXMLDataFile_.absoluteFilePath());
+
+    if (metadataFile.open(QFile::ReadOnly)) {
+
+        QXmlStreamReader reader(metadataFile.readAll());
+        metadataFile.close();
+
+        uint32_t loadingVersion_{0};
+        bool loadingAsMetric_{false};
+        AbstractEqItem* itemToLoad_{nullptr};
+
+        while (!reader.atEnd() && !reader.hasError()) {
+            QXmlStreamReader::TokenType token = reader.readNext();
+
+            if (token == QXmlStreamReader::StartElement) {
+
+                // totalitems and garbageitems are only in the equipment-data.xml for tile health purposes.
+
+                if (reader.name() == "version") {
+                    loadingVersion_ = reader.readElementText().toUInt();
+                    if (loadingVersion_ == 1) return false;
+                    qDebug("EquipmentCache reading v%d xml file: %s", loadingVersion_, eqXMLDataFile_.absoluteFilePath().toStdString().c_str());
+                } else if (reader.name() == "uom") {
+                    loadingAsMetric_ = (Utils::unprotect(reader.readElementText()) == "metric");
+                } else if (reader.name() == "equipmentitem") {
+                    itemToLoad_ = new EqItem(QUuid::fromString(Utils::unprotect(reader.attributes().value("eqref").toString().trimmed())));
+                } else if (reader.name() == "equipmentsummary") {
+                    itemToLoad_ = new EqSummary(QUuid::fromString(Utils::unprotect(reader.attributes().value("eqref").toString().trimmed())));
+                } else if (reader.name() == "equipmenthistory") {
+                    itemToLoad_ = new EqHistory(QUuid::fromString(Utils::unprotect(reader.attributes().value("eqref").toString().trimmed())));
+                } else if (reader.name() == "equipmentnotes") {
+                    itemToLoad_ = new EqNotes(QUuid::fromString(Utils::unprotect(reader.attributes().value("eqref").toString().trimmed())));
+                }
+
+                if (itemToLoad_) {
+                    itemToLoad_->xmlUoM(loadingAsMetric_);
+                    itemToLoad_->parseXml(loadingVersion_, reader);
+                    allEqItems_[itemToLoad_->getEquipmentRef()] = itemToLoad_;
+                    itemToLoad_ = nullptr;
+                }
+            }
+        }
+    } else {
+        QMessageBox::warning(nullptr, tr("Warning"), tr("Failed to open equipment-data.xml file!"));
+    }
+    return true;
+}
+
+void
+EquipmentCache::readXmlv1()
+{
+    qDebug() << "EquipmentCache reading v1 xml file: " << eqXMLDataFile_.absoluteFilePath().toStdString().c_str();
 
     QFile metadataFile(eqXMLDataFile_.absoluteFilePath());
     QXmlInputSource source( &metadataFile );
@@ -202,8 +259,11 @@ EquipmentXMLParser::EquipmentXMLParser(QMap<QUuid, AbstractEqItem*>& allEqItems)
 
 bool EquipmentXMLParser::endElement( const QString&, const QString&, const QString &qName)
 {
-    if (qName == "uom") loadingAsMetric_ = (Utils::unprotect(buffer.trimmed()) == "metric");
-    else if (qName == "version") loadingVersion_ = Utils::unprotect(buffer.trimmed()).toUInt();
+    if (qName == "version") {
+        loadingVersion_ = Utils::unprotect(buffer.trimmed()).toUInt();
+        if (loadingVersion_ != 1) return false;
+    }
+    else if (qName == "uom") loadingAsMetric_ = (Utils::unprotect(buffer.trimmed()) == "metric");
 
     // totalitems and garbageitems are only in the equipment-data.xml for tile health purposes.
     //else if (qName == "totalitems") totalItems_ = Utils::unprotect(buffer.trimmed());
@@ -227,7 +287,7 @@ bool EquipmentXMLParser::endElement( const QString&, const QString&, const QStri
     }
     else if (itemToLoad_) {
 
-        itemToLoad_->parseXML(loadingVersion_, qName, Utils::unprotect(buffer.trimmed()));
+        itemToLoad_->parseXmlv1(qName, Utils::unprotect(buffer.trimmed()));
 
         if ((qName == "equipmentitem") || (qName == "equipmentsummary") ||
             (qName == "equipmenthistory") || (qName == "equipmentnotes")) {
