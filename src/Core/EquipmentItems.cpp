@@ -399,7 +399,6 @@ EqItem::writeXml(uint32_t version, QTextStream& xmlOut) const
     }
 
     xmlOut << "\t\t\t<notes>" << Utils::xmlprotect(notes_) << "</notes>\n";
-
     xmlOut << "\t\t</equipmentitem>\n";
 }
 
@@ -634,8 +633,10 @@ EqHistory::parseXml(uint32_t version, QXmlStreamReader& reader)
 
                 if (reader.name() == "sortmostrecentfirst") sortMostRecentFirst_ = (reader.readElementText() == "true");
 
-                else if (reader.name() == "historyentry") eqHistoryEntry.reset();
-                else if (reader.name() == "historydate") eqHistoryEntry.date_ = QDate::fromString(reader.readElementText());
+                else if (reader.name() == "historyentry") {
+                    eqHistoryEntry.reset();
+                    eqHistoryEntry.date_ = QDate::fromString(reader.attributes().value("date").toString());
+                }
                 else if (reader.name() == "historytext") eqHistoryEntry.text_ = Utils::unprotect(reader.readElementText());
 
             } else if (token == QXmlStreamReader::EndElement) {
@@ -653,15 +654,22 @@ void
 EqHistory::writeXml(uint32_t version, QTextStream& xmlOut) const
 {
     if (version == 1) xmlOut << "\t\t<equipmenthistory>\n";
-    if (version == 2 ) xmlOut << "\t\t<equipmenthistory ";
+    if (version == 2) xmlOut << "\t\t<equipmenthistory ";
 
     AbstractEqItem::writeXml(version, xmlOut);
 
     xmlOut << "\t\t\t<sortmostrecentfirst>" << (sortMostRecentFirst_ ? "true" : "false") << "</sortmostrecentfirst>\n";
 
     for (const auto& eqHistory : eqHistoryList_) {
-        xmlOut << "\t\t\t<historyentry>\n";
-        xmlOut << "\t\t\t\t<historydate>" << Utils::xmlprotect(eqHistory.date_.toString()) << "</historydate>\n";
+
+        if (version == 1) {
+            xmlOut << "\t\t\t<historyentry>\n";
+            xmlOut << "\t\t\t\t<historydate>" << Utils::xmlprotect(eqHistory.date_.toString()) << "</historydate>\n";
+        }
+        if (version == 2) {
+            xmlOut << "\t\t\t<historyentry date=\"" << Utils::xmlprotect(eqHistory.date_.toString()) << "\">\n";
+        }
+
         xmlOut << "\t\t\t\t<historytext>" << Utils::xmlprotect(eqHistory.text_) << "</historytext>\n";
         xmlOut << "\t\t\t</historyentry>\n";
     }
