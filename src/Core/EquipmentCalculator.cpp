@@ -27,7 +27,7 @@
 EquipmentCalculator::EquipmentCalculator() :
     eqCalculationInProgress_(0), calculationsDisabled_(false)
 {
-    qDebug() << "EquipmentCalculator created";
+    qInfo() << "EquipmentCalculator created";
 
     // cannot use athlete specific signals, as there is only one equipment view.
     connect(GlobalContext::context(), &GlobalContext::configChanged, this, &EquipmentCalculator::configChanged);
@@ -38,14 +38,14 @@ EquipmentCalculator::EquipmentCalculator() :
 
 EquipmentCalculator::~EquipmentCalculator()
 {
-    qDebug() << "EquipmentCalculator destroyed";
+    qInfo() << "EquipmentCalculator destroyed";
 }
 
 void
 EquipmentCalculator::disableCalculations(bool disableCalculations)
 {
     calculationsDisabled_ = disableCalculations;
-    qDebug() << "EquipmentCalculator::disableCalculations: " << (calculationsDisabled_ ? "disabled" : "enabled");
+    qInfo() << "EquipmentCalculator::disableCalculations: " << (calculationsDisabled_ ? "disabled" : "enabled");
 }
 
 void
@@ -54,7 +54,7 @@ EquipmentCalculator::initialise(Context *context)
     static bool initialised = false;
 
     if (!initialised) {
-        qDebug() << "EquipmentCalculator::initialise";
+        qInfo() << "EquipmentCalculator::initialise";
 
         initialised = true;
         mainWindow_ = context->mainWindow;
@@ -71,7 +71,7 @@ EquipmentCalculator::initialise(Context *context)
 void
 EquipmentCalculator::openingAthlete(QString athleteName, Context* context)
 {
-    qDebug() << "EquipmentCalculator::openingAthlete - " << athleteName.toStdString().c_str();
+    qInfo() << "EquipmentCalculator::openingAthlete - " << athleteName.toStdString().c_str();
 
     // register signal for when an athlete's activities have been loaded
     connect(context, &Context::loadDone, this, &EquipmentCalculator::athleteLoadDone);
@@ -125,7 +125,7 @@ EquipmentCalculator::rideAdded(RideItem* rideI)
         for (auto itr = mainWindow_->athleteTabs().keyValueBegin(); itr != mainWindow_->athleteTabs().keyValueEnd(); ++itr) {
             if (itr->second->context->athlete->autoImport) {
                 if (itr->second->context->athlete->autoImport->importInProcess() ) {
-                    qDebug() << "EquipmentCalculator::rideAdded - import in progress";
+                    qInfo() << "EquipmentCalculator::rideAdded - import in progress";
                     return;
                 }
             }
@@ -170,7 +170,7 @@ EquipmentCalculator::calculationInProgress(const QString& reason)
 {
     // are we already recalcuating?
     if (++eqCalculationInProgress_ > 1) {
-        qDebug() << "EquipmentCalculator::calculation already in progress, deferred - " << reason.toStdString().c_str();
+        qInfo() << "EquipmentCalculator::calculation already in progress, deferred - " << reason.toStdString().c_str();
         return true;
     }
     return false;
@@ -226,7 +226,7 @@ EquipmentCalculator::recalculateCache(const QString& reason)
         }
     }
 
-    qDebug() << "EquipmentCalculator::Recalculate Cache - " << reason.toStdString().c_str()
+    qInfo() << "EquipmentCalculator::Recalculate Cache - " << reason.toStdString().c_str()
             << ", rides:" << rideItemList_.size() << ", tiles:" << allAbsEqItems_.size();
 
     // empty ride list then no calculation possible, abort calculation
@@ -310,7 +310,7 @@ EquipmentCalculator::threadCompleted(EquipCalculationThread* thread)
 
         auto endTime = std::chrono::high_resolution_clock::now();
 
-        qDebug() << "EquipmentCalculator::Calculation Complete: stats: Threads:" << threadsUsed_
+        qInfo() << "EquipmentCalculator::Calculation Complete: stats: Threads:" << threadsUsed_
                 << ", Tiles:" << allAbsEqItems_.size() << ", Activities:" << numActivities_
                 << ", Time:" << std::chrono::duration<double, std::milli>(endTime-startTime_).count() << " mSecs";
 

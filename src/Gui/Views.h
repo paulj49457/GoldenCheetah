@@ -1,10 +1,7 @@
 /*
  * Copyright (c) 2013 Mark Liversedge (liversedge@gmail.com)
-<<<<<<< HEAD
  * LTMSidebarView Copyright (c) 2025 Paul Johnson (paulj49457@gmail.com)
-=======
  * EquipmentView Copyright (c) 2025 Paul Johnson (paulj49457@gmail.com)
->>>>>>> 93139adf7 (XML Equipment Management Feature)
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free

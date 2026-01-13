@@ -28,10 +28,11 @@
 EquipmentCache::EquipmentCache() :
     eqXMLDataFile_(QDir(gcroot).absolutePath()+"/equipment-data.xml")
 {
-    qDebug() << "EquipmentCache created";
+    qInfo() << "EquipmentCache created";
 
     if (eqXMLDataFile_.exists() && eqXMLDataFile_.isFile()) {
 
+        // trying reading the latest format of the equipment-data.xml file
         if (readXml() == false) {
 
             // try reading legacy v1 format of the equipment-data.xml file (uses legacy QXmlDefaultHandler)
@@ -51,7 +52,7 @@ EquipmentCache::EquipmentCache() :
 
 EquipmentCache::~EquipmentCache()
 {
-    qDebug() << "EquipmentCache destroyed";
+    qInfo() << "EquipmentCache destroyed";
 }
 
 AbstractEqItem*
@@ -133,8 +134,6 @@ EquipmentCache::writeXml() const
     // the xml file version to be written.
     uint32_t version = 2;
 
-    qDebug("EquipmentCache - Writing v%d xml file: %s", version, eqXMLDataFile_.absoluteFilePath().toStdString().c_str());
-
     // open file - truncate contents
     QFile file(eqXMLDataFile_.absoluteFilePath());
     if (!file.open(QFile::WriteOnly)) {
@@ -153,6 +152,8 @@ EquipmentCache::writeXml() const
 
     xmlOut.setRealNumberNotation(QTextStream::FixedNotation);
     xmlOut.setRealNumberPrecision(EQ_DECIMAL_PRECISION);
+
+    qInfo("EquipmentCache - Writing v%d xml file: %s", version, eqXMLDataFile_.absoluteFilePath().toStdString().c_str());
 
     // begin document
     xmlOut << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n";
@@ -209,7 +210,7 @@ EquipmentCache::readXml()
                 if (reader.name() == "version") {
                     loadingVersion_ = reader.readElementText().toUInt();
                     if (loadingVersion_ == 1) return false;
-                    qDebug("EquipmentCache reading v%d xml file: %s", loadingVersion_, eqXMLDataFile_.absoluteFilePath().toStdString().c_str());
+                    qInfo("EquipmentCache reading v%d xml file: %s", loadingVersion_, eqXMLDataFile_.absoluteFilePath().toStdString().c_str());
                 } else if (reader.name() == "uom") {
                     loadingAsMetric_ = (Utils::unprotect(reader.readElementText()) == "metric");
                 } else if (reader.name() == "equipmentitem") {
@@ -239,7 +240,7 @@ EquipmentCache::readXml()
 void
 EquipmentCache::readXmlv1()
 {
-    qDebug() << "EquipmentCache reading v1 xml file: " << eqXMLDataFile_.absoluteFilePath().toStdString().c_str();
+    qInfo() << "EquipmentCache reading v1 xml file: " << eqXMLDataFile_.absoluteFilePath().toStdString().c_str();
 
     QFile metadataFile(eqXMLDataFile_.absoluteFilePath());
     QXmlInputSource source( &metadataFile );
