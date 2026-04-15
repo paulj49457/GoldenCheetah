@@ -135,7 +135,7 @@
 
 // the next two will with each build/release
 #define VERSION_LATEST 5011
-#define VERSION_STRING "V3.8-DEV2603"
+#define VERSION_STRING "V3.8-EquipV1"
 #define GC_VERSION VERSION_STRING // To force version string on non-tagged ci builds
 
 // default config for this release cycle
