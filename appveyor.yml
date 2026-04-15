@@ -205,6 +205,8 @@ artifacts:
   name: GCwindowsInstaller
 - path: GCversionWindows.txt
   name: GCversionWindows
+- path: GoldenCheetah.exe
+  name: GoldenCheetah
 # macOS
 - path: GoldenCheetah_v3.8_x64.dmg
   name: GCmacOSpackage
