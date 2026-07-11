@@ -10,6 +10,7 @@ class AboutPage;
 class VersionPage;
 class ConfigPage;
 class ContributorsPage;
+class AdditionsPage;
 
 class AboutDialog: public QDialog
 {
@@ -25,6 +26,7 @@ class AboutDialog: public QDialog
         AboutPage *aboutPage;
         VersionPage *versionPage;
         ContributorsPage *contributorsPage;
+        AdditionsPage *additionsPage;
 
         QTabWidget *tabWidget;
         QVBoxLayout *mainLayout;
@@ -71,5 +73,18 @@ class ContributorsPage : public QWidget
 
 };
 
+class AdditionsPage : public QWidget
+{
+    Q_OBJECT
+    G_OBJECT
+
+
+    public:
+        AdditionsPage(Context *context);
+
+    private:
+        Context *context;
+
+};
 
 #endif // ABOUTDIALOG_H

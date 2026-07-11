@@ -26,12 +26,14 @@ AboutDialog::AboutDialog(Context *context) : context(context)
     aboutPage = new AboutPage(context);
     versionPage = new VersionPage(context);
     contributorsPage = new ContributorsPage(context);
+    additionsPage = new AdditionsPage(context);
 
     tabWidget = new QTabWidget;
     tabWidget->setContentsMargins(0,0,0,0);
     tabWidget->addTab(aboutPage, tr("About"));
     tabWidget->addTab(versionPage, tr("Version"));
     tabWidget->addTab(contributorsPage, tr("Contributors"));
+    tabWidget->addTab(additionsPage, tr("Additions"));
 
     mainLayout = new QVBoxLayout;
     mainLayout->addWidget(tabWidget);
@@ -229,6 +231,48 @@ ContributorsPage::ContributorsPage(Context *context) : context(context)
     mainLayout->setSpacing(0);
     mainLayout->setContentsMargins(0,0,0,0);
     mainLayout->addWidget(text);
+
+    setLayout(mainLayout);
+}
+
+//
+// Additions page
+//
+AdditionsPage::AdditionsPage(Context *context) : context(context)
+{
+    QStringList additions;
+    additions.append("");
+    additions.append("<h3>The following additions are built upon the GC baseline:</h3>");
+    additions.append("");
+    additions.append("<i>July 2026 custom build</i>");
+    additions.append("");
+    additions.append("Remove the Bootstrap Athlete's specific code:<a href=\"https://github.com/GoldenCheetah/GoldenCheetah/pull/4862\"> PR Info</a>");
+    additions.append("Combine View Indexes and View Relevance Enumeration:<a href=\"https://github.com/GoldenCheetah/GoldenCheetah/pull/4859\"> PR Info</a>");
+    additions.append("Configuration changed Enumeration");
+    additions.append("Layout Enumeration");
+    additions.append("Equipment Management Feature:<a href=\"https://github.com/paulj49457/GoldenCheetah/wiki/Equipment-Management-Feature\"> More Info</a>");
+    additions.append("Application Pack:<a href=\"https://github.com/paulj49457/GoldenCheetah/wiki/Application-pack\"> More Info</a>");
+    additions.append("Data field type (user, special, metric) identification:<a href=\"https://github.com/paulj49457/GoldenCheetah/wiki/Display-of-Field-Type-(Metadata,-Special-or-Metric)\"> More Info</a>");
+    additions.append("Define Summary fields for each Sport/SubSport:<a href=\"https://github.com/paulj49457/GoldenCheetah/wiki/New-Summary-Fields-Page\"> More Info</a>");
+    additions.append("Appveyor gc executable generation, plus additions tab");
+
+    QString additionsTable = "<table><tr>";
+    for (int i=0;i<additions.count();i++){
+        additionsTable.append("<td><left>"+additions.at(i)+"</left></td></tr><tr>");
+    }
+    additionsTable.append("</tr></table>");
+
+    QLabel *text;
+    text=new QLabel(this);
+    text->setOpenExternalLinks(true);
+    text->setContentsMargins(0,0,0,0);
+    text->setText(additionsTable);
+
+    QVBoxLayout *mainLayout = new QVBoxLayout;
+    mainLayout->setSpacing(0);
+    mainLayout->setContentsMargins(0,0,0,0);
+    mainLayout->addWidget(text);
+    mainLayout->addStretch();
 
     setLayout(mainLayout);
 }
