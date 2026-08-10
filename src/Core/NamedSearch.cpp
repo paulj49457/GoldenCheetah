@@ -72,19 +72,51 @@ static QString unprotect(const QString string)
 
     return s;
 }
+
 void
 NamedSearches::read()
 {
-    QFile namedSearchFile(home.canonicalPath() + "/namedsearches.xml");
-    QXmlInputSource source( &namedSearchFile );
-    QXmlSimpleReader xmlReader;
-    NamedSearchParser handler;
-    xmlReader.setContentHandler(&handler);
-    xmlReader.setErrorHandler(&handler);
-    xmlReader.parse(source);
+    QFile globalNamedSearchFile(QDir(gcroot).canonicalPath()+"/namedsearches.xml");
 
-    // go read them!
-    list = handler.getResults();
+    // Read the global namedSearch.xml file if it exists
+    if (globalNamedSearchFile.exists()) {
+
+        QXmlInputSource source( &globalNamedSearchFile );
+        QXmlSimpleReader xmlReader;
+        NamedSearchParser handler;
+        xmlReader.setContentHandler(&handler);
+        xmlReader.setErrorHandler(&handler);
+        xmlReader.parse(source);
+
+        // go read them!
+        list = handler.getResults();
+
+    } else {
+
+        // Read the individual athlete namedSearch.xml files
+        QStringListIterator i(QDir(gcroot).entryList(QDir::Dirs | QDir::NoDotAndDotDot));
+        while (i.hasNext()) {
+            QString name = i.next();
+            SKIP_QTWE_CACHE  // skip Folder Names created by QTWebEngine on Windows
+
+            // ignore dot folders
+            if (name.startsWith(".")) continue;
+
+            QFile namedSearchFile(QDir(gcroot).canonicalPath()+"/" + name + "/config/namedsearches.xml");
+            if (namedSearchFile.exists()) {
+
+                QXmlInputSource source( &namedSearchFile );
+                QXmlSimpleReader xmlReader;
+                NamedSearchParser handler;
+                xmlReader.setContentHandler(&handler);
+                xmlReader.setErrorHandler(&handler);
+                xmlReader.parse(source);
+
+                // go read them!
+                list += handler.getResults();
+            }
+        }
+    }
 
     // If there is no filters yet, add some for multisport use.
     if (list.isEmpty()) {
@@ -107,12 +139,15 @@ NamedSearches::read()
         list.append(namedSearch);
     }
 
+    // write the filters to the global namedSearch.xml file
+    write();
+
     // let everyone know they have changed
-    changed();
+    GlobalContext::context()->notifyNamedSearchesChanged();
 }
 
 
-NamedSearch NamedSearches::get(QString name)
+NamedSearch NamedSearches::get(const QString& name)
 {
     NamedSearch returning;
     foreach (NamedSearch x, list) {
@@ -133,16 +168,49 @@ void
 NamedSearches::write()
 {
     // update namedSearchs.xml
-    QString file = QString(home.canonicalPath() + "/namedsearches.xml");
+    QString file = QString(QDir(gcroot).canonicalPath()+"/namedsearches.xml");
     NamedSearchParser::serialize(file, list);
-    athlete->notifyNamedSearchesChanged();
+    GlobalContext::context()->notifyNamedSearchesChanged();
+}
+
+bool
+NamedSearches::deleteNamedSearch(int index)
+{
+    if ((index >= 0) && (index < list.size())) {
+        list.removeAt(index);
+        write();
+        return true;
+    }
+    return false;
 }
 
 void
-NamedSearches::deleteNamedSearch(int index)
+NamedSearches::appendNamedSearch(const NamedSearch& x)
 {
-    list.removeAt(index);
+    list.append(x);
     write();
+}
+
+bool
+NamedSearches::updateNamedSearch(int index, const NamedSearch& x)
+{
+    if ((index >= 0) && (index < list.size())) {
+        list[index] = x;
+        write();
+        return true;
+    }
+    return false;
+}
+
+bool
+NamedSearches::swapItemsAt(int newIndex, int index)
+{
+    if ((newIndex != index) && (newIndex >= 0) && (newIndex < list.size()) && (index >= 0) && (index < list.size())) {
+        list.swapItemsAt(newIndex, index);
+        write();
+        return true;
+    }
+    return false;
 }
 
 bool NamedSearchParser::startDocument()
@@ -155,8 +223,6 @@ bool NamedSearchParser::endElement( const QString&, const QString&, const QStrin
 {
     if(qName == "name")
         namedSearch.name = unprotect(buffer.trimmed());
-    else if (qName == "count")
-        namedSearch.count = unprotect(buffer.trimmed()).toInt();
     else if (qName == "type")
         namedSearch.type = unprotect(buffer.trimmed()).toInt();
     else if (qName == "text")
@@ -309,7 +375,7 @@ EditNamedSearches::EditNamedSearches(QWidget *parent, Context *context) : QDialo
     row4->addWidget(closeButton);
 
     // Populate the list of named searches
-    foreach(NamedSearch x, context->athlete->namedSearches->getList()) {
+    foreach(NamedSearch x, NamedSearches::getInstance().getList()) {
         QTreeWidgetItem *add = new QTreeWidgetItem(searchList->invisibleRootItem(), 0);
         add->setIcon(0, x.type == NamedSearch::search ? searchIcon : filterIcon);
         add->setText(1, x.name);
@@ -318,7 +384,7 @@ EditNamedSearches::EditNamedSearches(QWidget *parent, Context *context) : QDialo
     connect(searchList, SIGNAL(itemSelectionChanged()), this, SLOT(selectionChanged()));
 
     // and select the first one
-    if (context->athlete->namedSearches->getList().count()) {
+    if (NamedSearches::getInstance().getList().count()) {
         searchList->setCurrentItem(searchList->invisibleRootItem()->child(0));
     }
 
@@ -337,7 +403,7 @@ EditNamedSearches::selectionChanged()
     if (active || searchList->currentItem() == NULL) return;
 
     int index = searchList->invisibleRootItem()->indexOfChild(searchList->currentItem());
-    NamedSearch x = context->athlete->namedSearches->getList().at(index);
+    NamedSearch x = NamedSearches::getInstance().get(index);
 
     editName->setText(x.name);
     editSearch->setText(x.text);
@@ -354,7 +420,7 @@ EditNamedSearches::addClicked()
     x.text = editSearch->text();
     x.name = editName->text();
     x.type = editSearch->getMode();
-    context->athlete->namedSearches->getList().append(x);
+    NamedSearches::getInstance().appendNamedSearch(x);
 
     QTreeWidgetItem *add = new QTreeWidgetItem(searchList->invisibleRootItem(), 0);
     add->setIcon(0, x.type == NamedSearch::search ? searchIcon : filterIcon);
@@ -375,9 +441,12 @@ EditNamedSearches::updateClicked()
     int index = searchList->invisibleRootItem()->indexOfChild(searchList->currentItem());
 
     // update the text
-    context->athlete->namedSearches->getList()[index].name = editName->text();
-    context->athlete->namedSearches->getList()[index].type = editSearch->getMode();
-    context->athlete->namedSearches->getList()[index].text = editSearch->text();
+
+    NamedSearch x;
+    x.text = editSearch->text();
+    x.name = editName->text();
+    x.type = editSearch->getMode();
+    NamedSearches::getInstance().updateNamedSearch(index, x);
 
     QTreeWidgetItem *here = searchList->invisibleRootItem()->child(index);
     here->setIcon(0, editSearch->getMode() == 0 ? searchIcon : filterIcon);
@@ -398,7 +467,7 @@ EditNamedSearches::upClicked()
     int newIndex = index - 1;
 
     if (index > 0) {
-        context->athlete->namedSearches->getList().swapItemsAt(newIndex, index);
+        NamedSearches::getInstance().swapItemsAt(newIndex, index);
         QTreeWidgetItem* child = searchList->invisibleRootItem()->takeChild(index);
         searchList->invisibleRootItem()->insertChild(newIndex, child);
         searchList->setCurrentItem(child);
@@ -417,8 +486,8 @@ EditNamedSearches::downClicked()
     int index = searchList->invisibleRootItem()->indexOfChild(searchList->currentItem());
     int newIndex = index + 1;
 
-    if (index < (context->athlete->namedSearches->getList().size() - 1)) {
-        context->athlete->namedSearches->getList().swapItemsAt(newIndex, index);
+    if (index < (NamedSearches::getInstance().getList().size() - 1)) {
+        NamedSearches::getInstance().swapItemsAt(newIndex, index);
         QTreeWidgetItem* child = searchList->invisibleRootItem()->takeChild(index);
         searchList->invisibleRootItem()->insertChild(newIndex, child);
         searchList->setCurrentItem(child);
@@ -435,20 +504,11 @@ EditNamedSearches::deleteClicked()
     active = true;
 
     int index = searchList->invisibleRootItem()->indexOfChild(searchList->currentItem());
-    context->athlete->namedSearches->getList().removeAt(index);
+    NamedSearches::getInstance().deleteNamedSearch(index);
     delete searchList->invisibleRootItem()->takeChild(index);
 
     active = false;
     selectionChanged(); // QT signals whilst rows are being removed, this is very confusing
 }
 
-// trap close dialog and update named searches in mainwindow/on disk
-void EditNamedSearches::closeEvent(QCloseEvent*) { writeSearches(); }
-void EditNamedSearches::reject() { writeSearches(); }
-
-void
-EditNamedSearches::writeSearches()
-{
-    context->athlete->namedSearches->write();
-}
 

@@ -84,6 +84,7 @@ class GlobalContext : public QObject
 
         static GlobalContext *context();
 
+        void notifyNamedSearchesChanged() { namedSearchesChanged(); }
         void notifyConfigChanged(qint32);
 
         // equipment management
@@ -120,6 +121,7 @@ class GlobalContext : public QObject
         void eqItemRecalculation(const QUuid& equipmentRef, const QString& reason); // request equipment item recalculated
 
         void exportChartToCloudDB();
+        void namedSearchesChanged();
 
     private:
         // singleton pattern
