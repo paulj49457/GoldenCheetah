@@ -93,7 +93,8 @@ NamedSearches::read()
 
     } else {
 
-        // Read the individual athlete namedsearches.xml files
+        // Read the individual athlete namedsearches.xml files, this should only ever
+        // occur once to create the combined single namedsearches.xml file.
         QStringListIterator i(QDir(gcroot).entryList(QDir::Dirs | QDir::NoDotAndDotDot));
         while (i.hasNext()) {
             QString name = i.next();
@@ -112,8 +113,10 @@ NamedSearches::read()
                 xmlReader.setErrorHandler(&handler);
                 xmlReader.parse(source);
 
-                // go read them!
-                list += handler.getResults();
+                // skip any duplicates
+                for (const NamedSearch& ns : handler.getResults()) {
+                    if (list.indexOf(ns) == -1) list.append(ns);
+                }
             }
         }
     }

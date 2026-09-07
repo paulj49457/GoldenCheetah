@@ -36,6 +36,12 @@ class NamedSearch
         enum Type { search=0, filter=1 };
         NamedSearch() : type(search) {}
 
+        // we need to check the searches are functionally the same, so strip the whitespace for the search text before comparison
+        bool operator==(const NamedSearch& ns) const {
+            return (name == ns.name && type == ns.type &&
+                text.simplified().remove(' ') == ns.text.simplified().remove(' '));
+        }
+
         QString name; // name, typically users name them by year e.g. "2011 Season"
         int type;
         QString text;
